@@ -1,0 +1,17 @@
+[Unit]
+Description=ArciTEK.AI Quantum Self-Improvement Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ArciTEK.AI
+ExecStart=/home/ubuntu/ArciTEK.AI/venv/bin/python3 /home/ubuntu/ArciTEK.AI/quantum_self_improvement_bot.py monitor --interval 24
+Restart=always
+RestartSec=60
+StandardOutput=append:/var/log/quantum-bot.log
+StandardError=append:/var/log/quantum-bot-error.log
+
+[Install]
+WantedBy=multi-user.target
+
