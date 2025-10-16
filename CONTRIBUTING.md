@@ -15,19 +15,7 @@ Welcome to the ArciTEK.AI project! We're excited that you're interested in contr
 
 ## Code of Conduct
 
-ArciTEK.AI is committed to fostering an open and welcoming environment. We expect all contributors to adhere to our code of conduct:
-
-### Our Standards
-
-- **Respectful Communication**: Treat all community members with respect and kindness
-- **Inclusive Environment**: Welcome contributors from all backgrounds and experience levels
-- **Constructive Feedback**: Provide helpful, actionable feedback in code reviews
-- **Collaborative Spirit**: Work together towards the common goal of advancing AI development tools
-- **Quality Focus**: Maintain the high standards that make ArciTEK.AI exceptional
-
-### Quantum-Enhanced Collaboration
-
-ArciTEK.AI embraces the principles of quantum superposition in collaboration - multiple perspectives can coexist and strengthen the final solution. We encourage diverse approaches and innovative thinking.
+ArciTEK.AI is committed to fostering an open and welcoming environment. We expect all contributors to adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Getting Started
 
@@ -91,7 +79,7 @@ cp .env.template .env
 
 ```bash
 # Run health check
-python upgrade.py status
+./monitor.py status
 
 # Start development server
 ./startup.sh start
@@ -162,47 +150,7 @@ git push origin feature/your-feature-name
 
 ### 4. Pull Request Guidelines
 
-#### PR Title Format
-- `feat:` for new features
-- `fix:` for bug fixes
-- `docs:` for documentation changes
-- `test:` for test additions/changes
-- `refactor:` for code refactoring
-- `perf:` for performance improvements
-- `quantum:` for quantum computing enhancements
-
-#### PR Description Template
-```markdown
-## Description
-Brief description of changes and motivation.
-
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
-- [ ] Quantum enhancement
-- [ ] AI model improvement
-
-## Testing
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] Quantum integration tests pass
-- [ ] Manual testing completed
-
-## Quantum Enhancement
-If applicable, describe quantum performance improvements:
-- Performance boost: +X.X%
-- Quantum algorithms used: [list]
-- Compatibility verified: [platforms]
-
-## Checklist
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] Tests added/updated
-- [ ] No breaking changes (or documented)
-```
+We use a pull request template to ensure that all submissions are reviewed effectively. Please see our [Pull Request Template](/.github/PULL_REQUEST_TEMPLATE.md) for details.
 
 ## Coding Standards
 
