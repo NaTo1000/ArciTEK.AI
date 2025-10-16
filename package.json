@@ -1,0 +1,189 @@
+{
+  "name": "arcitek-ai",
+  "version": "7.0.0",
+  "description": "The Ultimate Quantum-Enhanced Precision Build System",
+  "main": "arcitek_ui/index.js",
+  "scripts": {
+    "start": "./startup.sh start",
+    "stop": "./startup.sh stop",
+    "restart": "./startup.sh restart",
+    "health": "./startup.sh health",
+    "upgrade": "python3 upgrade.py upgrade",
+    "status": "python3 upgrade.py status",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "jest tests/unit/",
+    "test:integration": "jest tests/integration/",
+    "test:quantum": "jest tests/quantum/",
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "dev": "webpack serve --mode development",
+    "lint": "eslint arcitek_ui/ --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint arcitek_ui/ --ext .js,.jsx,.ts,.tsx --fix",
+    "format": "prettier --write arcitek_ui/",
+    "docs": "typedoc --out docs/api arcitek_ui/",
+    "docker:build": "docker build -t arcitek-ai:latest .",
+    "docker:run": "docker run -p 5000:5000 -p 8000:8000 arcitek-ai:latest",
+    "quantum:test": "node tests/quantum/quantum-integration.test.js",
+    "ai:test": "node tests/ai/ai-orchestration.test.js",
+    "precision:test": "node tests/build/precision-build.test.js"
+  },
+  "keywords": [
+    "quantum-computing",
+    "artificial-intelligence",
+    "precision-builds",
+    "naydoev1",
+    "supersynapai",
+    "argo-bots",
+    "chimera-models",
+    "development-tools",
+    "build-system",
+    "infinite2025"
+  ],
+  "author": "NaTo1000 <nato1000@infinite2025.com>",
+  "license": "PROPRIETARY",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NaTo1000/ArciTEK.AI.git"
+  },
+  "homepage": "https://infinite2025.com",
+  "bugs": {
+    "url": "https://github.com/NaTo1000/ArciTEK.AI/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "axios": "^1.6.0",
+    "socket.io-client": "^4.7.0",
+    "monaco-editor": "^0.44.0",
+    "xterm": "^5.3.0",
+    "three": "^0.158.0",
+    "d3": "^7.8.5",
+    "plotly.js": "^2.27.0",
+    "antd": "^5.12.0",
+    "@ant-design/icons": "^5.2.0",
+    "styled-components": "^6.1.0",
+    "framer-motion": "^10.16.0",
+    "recharts": "^2.8.0",
+    "moment": "^2.29.4",
+    "lodash": "^4.17.21",
+    "uuid": "^9.0.1",
+    "classnames": "^2.3.2",
+    "prop-types": "^15.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/node": "^20.10.0",
+    "@types/lodash": "^4.14.0",
+    "@types/uuid": "^9.0.0",
+    "typescript": "^5.3.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^4.15.0",
+    "babel-loader": "^9.1.0",
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "@babel/preset-react": "^7.22.0",
+    "@babel/preset-typescript": "^7.23.0",
+    "css-loader": "^6.8.0",
+    "style-loader": "^3.3.0",
+    "html-webpack-plugin": "^5.5.0",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "prettier": "^3.1.0",
+    "jest": "^29.7.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "typedoc": "^0.25.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "moduleNameMapping": {
+      "\\.(css|less|scss|sass)$": "identity-obj-proxy"
+    },
+    "collectCoverageFrom": [
+      "arcitek_ui/**/*.{js,jsx,ts,tsx}",
+      "!arcitek_ui/**/*.d.ts",
+      "!arcitek_ui/node_modules/**"
+    ],
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.{js,jsx,ts,tsx}"
+    ]
+  },
+  "babel": {
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react",
+      "@babel/preset-typescript"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "eslint:recommended",
+      "@typescript-eslint/recommended",
+      "plugin:react/recommended",
+      "plugin:react-hooks/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module",
+      "ecmaFeatures": {
+        "jsx": true
+      }
+    },
+    "rules": {
+      "react/react-in-jsx-scope": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "no-console": "warn"
+    },
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2,
+    "useTabs": false
+  },
+  "arcitek": {
+    "quantum_enhancement": true,
+    "ai_orchestration": true,
+    "naydoev1_learning": true,
+    "precision_builds": true,
+    "supported_platforms": [
+      "linux",
+      "darwin",
+      "win32"
+    ],
+    "quantum_backends": [
+      "ibm_quantum",
+      "ionq",
+      "google_quantum",
+      "azure_quantum",
+      "amazon_braket"
+    ],
+    "ai_models": [
+      "supersynapai",
+      "argo_bots", 
+      "chimera_models",
+      "naydoev1",
+      "jessicai_v2"
+    ]
+  }
+}
+
