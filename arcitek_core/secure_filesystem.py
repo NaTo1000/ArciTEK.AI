@@ -474,7 +474,7 @@ class SecureFileSystem:
             meta_dict['modified_at'] = meta.modified_at.isoformat()
             meta_dict['encryption_level'] = meta.encryption_level.value
             meta_dict['permissions'] = {
-                user: [p.value for p in perms]
+                user: [p.value if isinstance(p, FilePermission) else p for p in perms]
                 for user, perms in meta.permissions.items()
             }
             serializable_db[file_id] = meta_dict
