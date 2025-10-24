@@ -106,6 +106,9 @@ python arcitek_core/initialize.py
 
 # Start precision build system
 python build_system/precision_build.py --level quantum_perfect
+
+# Or start the optimization & monitoring system
+python arcitek_core/optimization_system.py
 ```
 
 ## 📁 Repository Structure
@@ -158,6 +161,9 @@ ArciTEK.AI supports deployment across:
 - **Advanced Analytics** - Comprehensive performance monitoring
 - **API Gateway** - RESTful and GraphQL endpoints
 - **Scalable Infrastructure** - Auto-scaling capabilities
+- **Optimization Engine** - ML-powered cache optimization
+- **Monitoring Agents** - Distributed system monitoring
+- **Performance Benchmarking** - 90th percentile targeting
 
 ## 🤝 Contributing
 
