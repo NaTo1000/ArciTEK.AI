@@ -136,28 +136,40 @@ ArciTEK.AI/
 
 ## 🔒 Security & Compliance
 
+### Enterprise Security Platform (NEW!)
+- **SSH & SHA512 Authentication** - Dual authentication methods for secure access
+- **Google Cloud Integration** - Automated GKE cluster deployment with security
+- **Encrypted File System** - User-isolated storage with military-grade encryption
+- **AES-256-GCM Encryption** - Enterprise-grade data protection
+- **Auto-scaling Infrastructure** - Dynamic scaling from 3-20 nodes
+- **22 Security Tests** - Comprehensive test coverage
+
+### Legacy Security Features
 - **JessicAI v2 "The Huntress"** - Military-grade security guardian
 - **NATO100 Authority Protocols** - Advanced access control
 - **Quantum Encryption** - Future-proof security
 - **Real-time Threat Detection** - 100% detection rate
-- **Enterprise Compliance** - SOC 2, GDPR ready
+- **Enterprise Compliance** - SOC 2, GDPR, HIPAA ready
 
 ## 🌐 Deployment
 
 ArciTEK.AI supports deployment across:
+- **Google Cloud Platform** - Automated GKE cluster deployment with Terraform
 - **infinite2025.com** - Primary showcase platform
-- **AWS, GCP, Azure** - Major cloud providers
+- **AWS, Azure** - Major cloud providers
 - **Docker Containers** - Containerized deployment
-- **Kubernetes** - Orchestrated scaling
+- **Kubernetes** - Orchestrated scaling with HPA
 - **Local Development** - Full local capability
 
 ## 📊 Enterprise Features
 
-- **Multi-tenant Architecture** - Enterprise-grade isolation
+- **Secure Authentication** - SSH and SHA512 key-based access control
+- **Multi-tenant Architecture** - Enterprise-grade isolation with encrypted file systems
 - **Real-time Collaboration** - Quantum-synchronized development
 - **Advanced Analytics** - Comprehensive performance monitoring
 - **API Gateway** - RESTful and GraphQL endpoints
-- **Scalable Infrastructure** - Auto-scaling capabilities
+- **Scalable Infrastructure** - Auto-scaling from 3-20 nodes
+- **Cloud-Native Deployment** - GKE with private nodes and workload identity
 
 ## 🤝 Contributing
 
@@ -167,6 +179,64 @@ ArciTEK.AI is a private repository. For collaboration opportunities:
 2. Review contribution guidelines
 3. Submit enhancement proposals
 4. Participate in precision build reviews
+
+## 🚀 Quick Start - Enterprise Security
+
+```bash
+# Clone the repository
+git clone https://github.com/NaTo1000/ArciTEK.AI.git
+cd ArciTEK.AI
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the enterprise security demo
+python3 demo_enterprise_security.py
+
+# Run security tests
+python3 tests/security/test_enterprise_security.py
+```
+
+### Example Usage
+
+```python
+from arcitek_core.enterprise_security import (
+    EnterpriseSecurityPlatform, AuthMethod, AccessLevel, 
+    ClusterType, EncryptionLevel
+)
+
+# Initialize platform
+platform = EnterpriseSecurityPlatform(
+    gcp_project_id="your-project-id"
+)
+
+# Onboard user with SSH authentication
+user = platform.onboard_user(
+    username="admin",
+    email="admin@company.com",
+    auth_method=AuthMethod.SSH_KEY,
+    access_level=AccessLevel.SUPER_ADMIN,
+    filesystem_quota_gb=500
+)
+
+# Deploy secure cluster
+cluster = platform.deploy_secure_cluster(
+    cluster_name="production",
+    cluster_type=ClusterType.PRODUCTION,
+    min_nodes=5,
+    max_nodes=20
+)
+
+# Create encrypted file
+file = platform.create_secure_file(
+    user_id=user["components"]["authentication"]["user_id"],
+    filename="secrets.json",
+    content=b'{"api_key": "secret"}',
+    encryption_level=EncryptionLevel.MILITARY
+)
+```
+
+For detailed documentation, see [ENTERPRISE_SECURITY.md](./ENTERPRISE_SECURITY.md)
 
 ## 📄 License
 
