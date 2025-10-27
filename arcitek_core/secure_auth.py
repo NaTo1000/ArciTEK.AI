@@ -272,7 +272,17 @@ class SecureAuthenticationManager:
         
         # Verify SHA512 key
         key_decoded = base64.b64decode(sha512_key)
-        computed_hash = hashlib.sha512(username.encode() + key_decoded).hexdigest()
+        # Retrieve and decode the salt stored with the user account
+        if not hasattr(user, "sha512_salt") or user.sha512_salt is None:
+            print("   ❌ No SHA512 salt found for user")
+            self._record_failed_attempt(username)
+            self._log_security_event("AUTH_FAILED_SHA512", user.user_id if user else "unknown", {"username": username})
+            return None
+        if isinstance(user.sha512_salt, str):
+            salt = base64.b64decode(user.sha512_salt)
+        else:
+            salt = user.sha512_salt
+        computed_hash = hashlib.sha512(username.encode() + key_decoded + salt).hexdigest()
         
         if hmac.compare_digest(computed_hash, user.sha512_key_hash or ""):
             session = self._create_session(user, AuthMethod.SHA512_KEY, "127.0.0.1")
