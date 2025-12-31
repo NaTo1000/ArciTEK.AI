@@ -1,9 +1,20 @@
-# Python artifacts
+# ============================================================================
+# ArciTEK.AI - Quantum-Enhanced AI Build System
+# Comprehensive .gitignore for Enterprise AI/ML/Quantum Development
+# Version: 2.0 | Last Updated: 2025-12-31
+# ============================================================================
+
+# ============================================================================
+# PYTHON ARTIFACTS & BYTECODE
+# ============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.dylib
 .Python
+
+# Distribution / packaging
 build/
 develop-eggs/
 dist/
@@ -22,131 +33,660 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.whl
 
-# Virtual environments
+# PyInstaller
+*.manifest
+*.spec
+
+# ============================================================================
+# VIRTUAL ENVIRONMENTS & DEPENDENCY MANAGEMENT
+# ============================================================================
 venv/
 ENV/
 env/
 .venv
+.env.venv
+virtualenv/
+pipenv/
+poetry.lock.local
+.python-version
+pyrightconfig.json
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Conda
+.conda/
+conda-meta/
+.condarc.local
+
+# ============================================================================
+# JUPYTER & INTERACTIVE NOTEBOOKS
+# ============================================================================
+.ipynb_checkpoints/
 *.ipynb_checkpoints/
 jupyter_notebooks/
+.jupyter/
+.ipython/
+profile_default/
+ipython_config.py
 
-# AI/ML Model Files
+# JupyterLab
+.jupyter-lab/
+jupyterlab-settings/
+
+# ============================================================================
+# AI/ML MODEL FILES & CHECKPOINTS
+# ============================================================================
+# TensorFlow / Keras
 *.h5
 *.hdf5
+*.keras
 *.pb
+saved_model/
+tf_model/
+*.tflite
+*.tfrecord
+*.tfrecords
+
+# PyTorch
 *.pth
 *.pt
 *.ckpt
-*.keras
+*.checkpoint
+torch_model/
+traced_model/
+
+# Transformers / Hugging Face
+transformers_cache/
+huggingface_cache/
+*.safetensors
+*.msgpack
+
+# ONNX
 *.onnx
+*.onnx.tar.gz
+
+# Scikit-learn / Traditional ML
 *.pkl
 *.pickle
 *.joblib
 *.model
-*.weights
+sklearn_model/
+
+# Model checkpoints & saved states
 checkpoints/
+checkpoint/
 models/
+model/
 saved_models/
 model_checkpoints/
-*.safetensors
+weights/
+*.weights
+best_model/
+final_model/
 
-# Training artifacts
+# Quantization artifacts
+*.quantized
+quantized_models/
+
+# ============================================================================
+# QUANTUM COMPUTING ARTIFACTS
+# ============================================================================
+# Qiskit
+qiskit_cache/
+*.qasm
+*.qpy
+quantum_circuits/
+qiskit.log
+
+# Cirq
+cirq_cache/
+*.cirq
+
+# PennyLane
+pennylane_cache/
+*.qnode
+
+# Q# / Azure Quantum
+*.qs.bak
+qsharp_cache/
+azure_quantum_cache/
+
+# IBM Quantum
+ibmq_credentials.json
+ibmq_account.json
+ibm_quantum_cache/
+
+# General quantum artifacts
+quantum_results/
+quantum_experiments/
+qubits_data/
+quantum_state_*.npy
+
+# ============================================================================
+# TRAINING ARTIFACTS & EXPERIMENT TRACKING
+# ============================================================================
+# General training outputs
 logs/
+log/
 runs/
+run/
 tb_logs/
 tensorboard/
-wandb/
-mlruns/
-experiments/
-outputs/
-lightning_logs/
+tfevent*
+events.out.tfevents.*
 
-# Dataset files
+# MLflow
+mlruns/
+mlartifacts/
+mlflow.db
+mlflow_tracking/
+
+# Weights & Biases
+wandb/
+wandb-metadata.json
+.wandb/
+
+# Neptune.ai
+.neptune/
+neptune/
+
+# Comet.ml
+.comet/
+comet_experiment/
+
+# ClearML
+.clearml/
+clearml_cache/
+
+# Sacred
+sacred_experiments/
+
+# Experiment outputs
+experiments/
+experiment/
+outputs/
+output/
+results/
+result/
+artifacts/
+artifact/
+
+# PyTorch Lightning
+lightning_logs/
+lightning_checkpoints/
+
+# ============================================================================
+# DATASETS & DATA FILES
+# ============================================================================
+# Structured data
 *.csv
 *.tsv
+*.xlsx
+*.xls
+*.ods
+
+# Text data
+*.txt.gz
+*.jsonl
+*.ndjson
+
+# Serialized data
 *.dat
 *.data
-*.json
-*.jsonl
+*.arrow
 *.parquet
 *.feather
-*.arrow
+*.msgpack
+
+# HDF5 datasets
+*.hdf
+*.h5.data
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Data directories
 data/
+dataset/
 datasets/
 raw_data/
 processed_data/
-*.tfrecord
-*.tfrecords
+train_data/
+test_data/
+val_data/
+training_data/
+validation_data/
 
-# Caches
+# Annotation files
+annotations/
+labels/
+*.annotation
+
+# ============================================================================
+# CACHES & TEMPORARY FILES
+# ============================================================================
 .cache/
 *.cache
+__cache__/
+
+# Python caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.pytype/
+.pyre/
+.dmypy.json
+dmypy.json
+
+# Coverage reports
 .coverage
+.coverage.*
 htmlcov/
 *.cover
 .hypothesis/
+.tox/
+coverage.xml
+*.lcov
 
-# Node modules
+# Type checking
+.pyright/
+pyrightconfig.json.user
+
+# Linting
+.pylint.d/
+.flake8.cache/
+
+# ============================================================================
+# NODE.JS & JAVASCRIPT ECOSYSTEM
+# ============================================================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
 
-# Build artifacts
+# Build outputs
+.next/
+.nuxt/
+dist/
+out/
+.output/
+
+# Package manager files
+package-lock.json.local
+yarn.lock.local
+pnpm-lock.yaml.local
+
+# ============================================================================
+# BUILD ARTIFACTS & COMPILED CODE
+# ============================================================================
+# C/C++
 *.o
 *.obj
+*.a
+*.lib
+*.so
+*.dll
 *.exe
 *.out
 *.app
-*.dll
-*.so
 *.dylib
+*.exp
+*.ilk
+*.pdb
+*.idb
+
+# Rust
+target/
+Cargo.lock.local
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Go
+*.test
+*.prof
+go.work.sum.local
+
+# .NET
 bin/
 obj/
-target/
+*.user
+*.suo
 
-# IDE folders
+# Generic build directories
+build/
+Build/
+cmake-build-*/
+.gradle/
+*.cmake.in
+CMakeFiles/
+
+# ============================================================================
+# IDE & EDITOR CONFIGURATIONS
+# ============================================================================
+# JetBrains IDEs (PyCharm, IntelliJ, etc.)
 .idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Visual Studio Code
 .vscode/
+.vscode-test/
+*.code-workspace
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+
+# Vim
 *.swp
 *.swo
 *~
-.DS_Store
-*.sublime-project
-*.sublime-workspace
+.*.swp
+Session.vim
 
-# Secrets and environment files
+# Emacs
+*~
+\#*\#
+.\#*
+.projectile
+
+# Atom
+.atom/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ============================================================================
+# OPERATING SYSTEM FILES
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# Linux
+.Trash-*
+.directory
+.nfs*
+
+# ============================================================================
+# SECRETS, CREDENTIALS & SENSITIVE DATA
+# ============================================================================
+# Environment files
 .env
+.env.*
 .env.local
 .env.*.local
+!.env.example
+!.env.template
+
+# Credentials
+credentials/
+credentials.json
+*.credentials
+secrets/
+secret/
+*.secret
+*.secrets
+
+# API keys and tokens
 *.key
 *.pem
 *.p12
 *.pfx
-secrets/
-credentials/
-config/secrets.*
-*.secret
+*.crt
+*.cer
+*.der
+*.pub.local
+apikeys.txt
+access_token.txt
+bearer_token.txt
 
-# Large binary artifacts
-*.bin
-*.dat
-*.raw
-*.npy
-*.npz
+# SSH keys
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts.local
+
+# Cloud provider credentials
+*gcp*.json
+*aws*.json
+*azure*.json
+.aws/credentials.local
+.gcloud/credentials.local
+
+# Database passwords
+database.yml.local
+config/database.yml.local
+
+# Configuration with secrets
+config/secrets.*
+config/*.secret.*
+settings.secret.*
+
+# ============================================================================
+# LARGE FILES & BINARY ARTIFACTS
+# ============================================================================
+# Archives
 *.zip
+*.tar
 *.tar.gz
 *.tar.bz2
+*.tar.xz
+*.tgz
+*.gz
+*.bz2
+*.xz
 *.7z
 *.rar
+*.iso
+*.dmg
 
-# OS generated files
-Thumbs.db
-.Trash-*
+# Binary data
+*.bin
+*.raw
+*.dat.bin
+
+# NumPy arrays
+*.npy
+*.npz
+
+# Media files (large)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.wmv
+*.mp3
+*.wav
+*.flac
+
+# Large images
+*.psd
+*.ai
+*.eps
+*.pdf.large
+
+# ============================================================================
+# DOCKER & CONTAINERIZATION
+# ============================================================================
+docker-compose.override.yml
+.dockerignore.local
+*.dockerfile.local
+
+# Docker volumes
+docker_volumes/
+
+# ============================================================================
+# CLOUD & DEPLOYMENT
+# ============================================================================
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars.local
+.terraform.lock.hcl.local
+
+# Kubernetes
+*.kubeconfig
+kubeconfig.local
+
+# Serverless
+.serverless/
+.serverless_plugins/
+
+# Google Cloud
+.gcloudignore.local
+
+# ============================================================================
+# VERSION CONTROL & GIT
+# ============================================================================
+*.orig
+*.rej
+*.patch.local
+.git/objects/pack/*.tmp-*
+
+# Git LFS
+*.lfs.*
+
+# ============================================================================
+# TESTING & QA
+# ============================================================================
+# Test outputs
+test_results/
+test_outputs/
+test-results/
+.pytest_cache/
+.coverage*
+htmlcov/
+
+# Screenshot tests
+screenshots/
+__screenshots__/
+
+# Performance profiling
+*.prof
+*.profile
+*.perf
+
+# Benchmark results
+benchmark_results/
+benchmarks/output/
+
+# ============================================================================
+# DOCUMENTATION BUILDS
+# ============================================================================
+docs/_build/
+docs/.doctrees/
+site/
+_site/
+.sphinx/
+.mkdocs/
+
+# API documentation
+api_docs/
+generated_docs/
+
+# ============================================================================
+# MISCELLANEOUS
+# ============================================================================
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+tmp/
+temp/
+.tmp/
+
+# Lock files (except package managers)
+*.lock.local
+
+# PID files
+*.pid
+
+# Memory dumps
+core
+*.core
+*.dump
+
+# Logs
+*.log
+*.log.*
+!.gitkeep
+
+# Local configuration overrides
+*.local
+local/
+.local/
+
+# ============================================================================
+# PROJECT-SPECIFIC: ArciTEK.AI
+# ============================================================================
+# Quantum simulation outputs
+quantum_simulation_results/
+quantum_benchmarks/
+
+# AI model training outputs
+supersynapai_checkpoints/
+argo_bot_models/
+chimera_models/
+
+# NayDoeV1 learning artifacts
+naydoev1_learning/
+learning_environments/
+elite_research_output/
+
+# Performance monitoring
+performance_logs/
+quantum_metrics/
+ai_metrics/
+
+# Custom build artifacts
+arcitek_builds/
+precision_builds/
+quantum_perfect_builds/
+
+# ============================================================================
+# END OF .gitignore
+# ============================================================================
