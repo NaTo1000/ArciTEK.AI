@@ -1,0 +1,74 @@
+name: Container Mirror Matrix Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  mirror-and-test:
+    name: Mirror ${{ matrix.source_name }}:${{ matrix.tag }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source_name: dockerhub-python
+            source_image: docker.io/library/python
+            tag: "3.10-slim"
+          - source_name: dockerhub-python
+            source_image: docker.io/library/python
+            tag: "3.11-slim"
+          - source_name: ghcr-devcontainers
+            source_image: ghcr.io/devcontainers/python
+            tag: "3.10"
+          - source_name: ghcr-devcontainers
+            source_image: ghcr.io/devcontainers/python
+            tag: "3.11"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull source image
+        run: docker pull "${{ matrix.source_image }}:${{ matrix.tag }}"
+
+      - name: Create mirrored image tag
+        run: |
+          MIRROR_IMAGE="arcitek-mirror/${{ matrix.source_name }}:${{ matrix.tag }}"
+          docker tag "${{ matrix.source_image }}:${{ matrix.tag }}" "${MIRROR_IMAGE}"
+          echo "MIRROR_IMAGE=${MIRROR_IMAGE}" >> "${GITHUB_ENV}"
+
+      - name: Run mirrored image smoke test container
+        run: |
+          docker run --rm "${MIRROR_IMAGE}" python --version
+          docker run --rm "${MIRROR_IMAGE}" sh -lc "python -m pip --version"
+
+      - name: Run mirrored image quantum dependency test container
+        run: |
+          docker run --rm "${MIRROR_IMAGE}" sh -lc "\
+            python -m pip install --upgrade pip && \
+            python -m pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane azure-quantum && \
+            python - <<'PY'
+from importlib import import_module
+modules = ['qiskit', 'cirq', 'pennylane', 'azure.quantum']
+for name in modules:
+    import_module(name)
+print('Quantum dependency imports succeeded.')
+PY"
+
+      - name: Save mirrored image test summary
+        run: |
+          {
+            echo "source_image=${{ matrix.source_image }}:${{ matrix.tag }}"
+            echo "mirrored_image=${MIRROR_IMAGE}"
+            echo "status=passed"
+          } > "mirror-test-${{ matrix.source_name }}-${{ matrix.tag }}.txt"
+
+      - name: Upload mirrored image test summaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: mirror-test-summaries-${{ matrix.source_name }}-${{ matrix.tag }}
+          path: mirror-test-${{ matrix.source_name }}-${{ matrix.tag }}.txt
