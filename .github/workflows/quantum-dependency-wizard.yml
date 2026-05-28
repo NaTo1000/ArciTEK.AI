@@ -7,6 +7,9 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   QUANTUM_DEPENDENCY_LINKS: |
     qiskit|https://pypi.org/project/qiskit/
@@ -65,11 +68,18 @@ jobs:
 
       - name: Generate AI automation install wizard plan
         run: |
-          cat > quantum-install-wizard-plan.txt <<'EOF'
-          python -m pip install --upgrade pip
-          python -m pip install qiskit qiskit-aer qiskit-ibm-runtime
-          python -m pip install cirq pennylane azure-quantum
-          EOF
+          python - <<'PY'
+          import os
+
+          packages = []
+          for item in os.environ["QUANTUM_DEPENDENCY_LINKS"].strip().splitlines():
+              package, _ = item.split("|", 1)
+              packages.append(package)
+
+          with open("quantum-install-wizard-plan.txt", "w", encoding="utf-8") as f:
+              f.write("python -m pip install --upgrade pip\n")
+              f.write(f"python -m pip install {' '.join(packages)}\n")
+          PY
 
       - name: Execute AI automation download and installation wizard
         run: |

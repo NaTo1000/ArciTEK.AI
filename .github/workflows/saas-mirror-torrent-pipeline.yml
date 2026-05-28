@@ -7,6 +7,9 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   MIRROR_LINKS: |
     DockerHub Python 3.10 Slim|https://hub.docker.com/_/python
@@ -109,9 +112,13 @@ jobs:
 
       - name: Simulate high-speed segmented download pipeline
         run: |
+          python -m http.server 18080 --directory "${GITHUB_WORKSPACE}" >/tmp/http-server.log 2>&1 &
+          SERVER_PID=$!
+          sleep 2
           aria2c --split=16 --max-connection-per-server=16 --min-split-size=1M \
             --allow-overwrite=true --out "${TEST_BUNDLE_NAME}.downloaded.tar.gz" \
-            "file://${GITHUB_WORKSPACE}/${TEST_BUNDLE_NAME}.tar.gz"
+            "http://127.0.0.1:18080/${TEST_BUNDLE_NAME}.tar.gz"
+          kill "${SERVER_PID}"
 
       - name: Upload SaaS website and torrent artifacts
         uses: actions/upload-artifact@v4

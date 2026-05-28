@@ -7,6 +7,9 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   mirror-and-test:
     name: Mirror ${{ matrix.source_name }}:${{ matrix.tag }}
@@ -48,9 +51,10 @@ jobs:
 
       - name: Run mirrored image quantum dependency test container
         run: |
-          docker run --rm "${MIRROR_IMAGE}" sh -lc "python -m pip install --upgrade pip"
-          docker run --rm "${MIRROR_IMAGE}" sh -lc "python -m pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane azure-quantum"
-          docker run --rm "${MIRROR_IMAGE}" sh -lc "python -c \"from importlib import import_module; [import_module(m) for m in ['qiskit','cirq','pennylane','azure.quantum']]; print('Quantum dependency imports succeeded.')\""
+          docker run --rm "${MIRROR_IMAGE}" sh -lc "\
+            python -m pip install --upgrade pip && \
+            python -m pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane azure-quantum && \
+            python -c \"from importlib import import_module; [import_module(m) for m in ['qiskit','cirq','pennylane','azure.quantum']]; print('Quantum dependency imports succeeded.')\""
 
       - name: Save mirrored image test summary
         run: |
