@@ -37,39 +37,39 @@ jobs:
       - name: Validate all dependency links are active
         run: |
           python - <<'PY'
-import os
-import urllib.request
-import urllib.error
-import sys
+          import os
+          import urllib.request
+          import urllib.error
+          import sys
 
-raw_links = os.environ["QUANTUM_DEPENDENCY_LINKS"].strip().splitlines()
-errors = []
-for item in raw_links:
-    package, url = item.split("|", 1)
-    request = urllib.request.Request(url, method="HEAD")
-    try:
-        with urllib.request.urlopen(request, timeout=20) as response:
-            status = response.getcode()
-            if status >= 400:
-                raise RuntimeError(f"HTTP {status}")
-        print(f"OK {package}: {url}")
-    except Exception as exc:
-        errors.append(f"{package}: {url} ({exc})")
+          raw_links = os.environ["QUANTUM_DEPENDENCY_LINKS"].strip().splitlines()
+          errors = []
+          for item in raw_links:
+              package, url = item.split("|", 1)
+              request = urllib.request.Request(url, method="HEAD")
+              try:
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      status = response.getcode()
+                      if status >= 400:
+                          raise RuntimeError(f"HTTP {status}")
+                  print(f"OK {package}: {url}")
+              except Exception as exc:
+                  errors.append(f"{package}: {url} ({exc})")
 
-if errors:
-    print("Inactive dependency links detected:")
-    for err in errors:
-        print(err)
-    sys.exit(1)
-PY
+          if errors:
+              print("Inactive dependency links detected:")
+              for err in errors:
+                  print(err)
+              sys.exit(1)
+          PY
 
       - name: Generate AI automation install wizard plan
         run: |
           cat > quantum-install-wizard-plan.txt <<'EOF'
-python -m pip install --upgrade pip
-python -m pip install qiskit qiskit-aer qiskit-ibm-runtime
-python -m pip install cirq pennylane azure-quantum
-EOF
+          python -m pip install --upgrade pip
+          python -m pip install qiskit qiskit-aer qiskit-ibm-runtime
+          python -m pip install cirq pennylane azure-quantum
+          EOF
 
       - name: Execute AI automation download and installation wizard
         run: |
@@ -82,29 +82,28 @@ EOF
       - name: Attach installed dependencies list with active links
         run: |
           python - <<'PY'
-import os
-import subprocess
-from importlib.metadata import version, PackageNotFoundError
+          import os
+          from importlib.metadata import version, PackageNotFoundError
 
-deps = []
-for item in os.environ["QUANTUM_DEPENDENCY_LINKS"].strip().splitlines():
-    package, url = item.split("|", 1)
-    try:
-        ver = version(package)
-    except PackageNotFoundError:
-        ver = "not-installed"
-    deps.append((package, ver, url))
+          deps = []
+          for item in os.environ["QUANTUM_DEPENDENCY_LINKS"].strip().splitlines():
+              package, url = item.split("|", 1)
+              try:
+                  ver = version(package)
+              except PackageNotFoundError:
+                  ver = "not-installed"
+              deps.append((package, ver, url))
 
-with open("quantum-dependencies.md", "w", encoding="utf-8") as f:
-    f.write("# Quantum dependency list\n\n")
-    for package, ver, url in deps:
-        f.write(f"- [{package}]({url}) - `{ver}`\n")
+          with open("quantum-dependencies.md", "w", encoding="utf-8") as f:
+              f.write("# Quantum dependency list\n\n")
+              for package, ver, url in deps:
+                  f.write(f"- [{package}]({url}) - `{ver}`\n")
 
-with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
-    f.write("## Quantum dependency list\n\n")
-    for package, ver, url in deps:
-        f.write(f"- [{package}]({url}) - `{ver}`\n")
-PY
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("## Quantum dependency list\n\n")
+              for package, ver, url in deps:
+                  f.write(f"- [{package}]({url}) - `{ver}`\n")
+          PY
 
       - name: Upload dependency list artifact
         uses: actions/upload-artifact@v4

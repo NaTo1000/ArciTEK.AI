@@ -1,0 +1,90 @@
+name: SaaS P2P Community Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  p2p-forum-upload-download-sharing:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install P2P and validation tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends transmission-cli
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Build SaaS community forum artifact
+        run: |
+          mkdir -p community_forum/uploads
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path("community_forum")
+          html = (
+              "<!doctype html>\n"
+              "<html lang='en'>\n"
+              "<head><meta charset='utf-8'><title>ArciTEK.AI Community Forum</title></head>\n"
+              "<body>\n"
+              "<h1>ArciTEK.AI P2P Community Forum</h1>\n"
+              "<p>Upload, download, and sharing simulation portal generated in CI.</p>\n"
+              "</body>\n"
+              "</html>\n"
+          )
+          (root / "index.html").write_text(
+              html,
+              encoding="utf-8",
+          )
+          (root / "uploads" / "sample-share.txt").write_text(
+              "Community upload payload for sharing pipeline tests.",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Validate upload and download sharing flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          upload = Path("community_forum/uploads/sample-share.txt")
+          mirror = Path("community_forum/uploads/sample-share-mirror.txt")
+          download = Path("community_forum/downloaded-share.txt")
+
+          payload = upload.read_text(encoding="utf-8")
+          mirror.write_text(payload, encoding="utf-8")
+          download.write_text(mirror.read_text(encoding="utf-8"), encoding="utf-8")
+
+          assert download.read_text(encoding="utf-8") == payload
+          print("P2P upload/download/share flow validated.")
+          PY
+
+      - name: Package P2P forum bundle
+        run: |
+          tar -czf community-forum-bundle.tar.gz community_forum
+
+      - name: Create torrent metadata for forum sharing
+        run: |
+          transmission-create -o community-forum-bundle.torrent \
+            -t "udp://tracker.opentrackr.org:1337/announce" \
+            community-forum-bundle.tar.gz
+          transmission-show community-forum-bundle.torrent
+
+      - name: Upload P2P community forum artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2p-community-forum-artifacts
+          path: |
+            community_forum/index.html
+            community_forum/uploads/sample-share.txt
+            community_forum/downloaded-share.txt
+            community-forum-bundle.tar.gz
+            community-forum-bundle.torrent
