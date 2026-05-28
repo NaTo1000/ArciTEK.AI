@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+env:
+  QUANTUM_PACKAGES: qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane azure-quantum
+  QUANTUM_IMPORT_MODULES: qiskit,cirq,pennylane,azure.quantum
+
 jobs:
   mirror-and-test:
     name: Mirror ${{ matrix.source_name }}:${{ matrix.tag }}
@@ -53,8 +57,8 @@ jobs:
         run: |
           docker run --rm "${MIRROR_IMAGE}" sh -lc "\
             python -m pip install --upgrade pip && \
-            python -m pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane azure-quantum && \
-            python -c \"from importlib import import_module; [import_module(m) for m in ['qiskit','cirq','pennylane','azure.quantum']]; print('Quantum dependency imports succeeded.')\""
+            python -m pip install ${QUANTUM_PACKAGES} && \
+            python -c \"import os; from importlib import import_module; [import_module(m) for m in os.environ['QUANTUM_IMPORT_MODULES'].split(',')]; print('Quantum dependency imports succeeded.')\""
 
       - name: Save mirrored image test summary
         run: |
