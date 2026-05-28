@@ -1,0 +1,110 @@
+name: Hugging Face ConTAinerSwich.X Runner
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HF_MODEL_CATALOG: |
+    distilbert-base-uncased
+    google/flan-t5-small
+    sentence-transformers/all-MiniLM-L6-v2
+
+jobs:
+  hf-sandboxed-runner:
+    name: ConTAinerSwich.X (${{ matrix.container_image }}, scale=${{ matrix.scale_factor }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        container_image: ["python:3.10-slim", "python:3.11-slim"]
+        scale_factor: [1, 2, 4]
+
+    container:
+      image: ${{ matrix.container_image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Hugging Face runtime
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git
+          rm -rf /var/lib/apt/lists/*
+          python -m pip install --upgrade pip
+          python -m pip install "torch>=2.1.0" "transformers>=4.35.0" "huggingface_hub>=0.20.0"
+
+      - name: Initialize ConTAinerSwich.X sandbox profile
+        run: |
+          cat > ConTAinerSwich.X <<'EOF'
+          [ConTAinerSwich.X]
+          mode=sandboxed
+          provider=huggingface
+          transfer=double-click-overlay
+          cluster_scale_factor=${{ matrix.scale_factor }}
+          EOF
+
+      - name: Build model catalog from Hugging Face
+        env:
+          HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from huggingface_hub import model_info
+
+          models = [m.strip() for m in os.environ["HF_MODEL_CATALOG"].splitlines() if m.strip()]
+          catalog = []
+          for name in models:
+              try:
+                  _ = model_info(name, token=os.environ.get("HUGGINGFACE_TOKEN"))
+                  status = "reachable"
+              except Exception as exc:
+                  status = f"unreachable: {exc}"
+              catalog.append({"model": name, "status": status})
+
+          with open("hf-model-catalog.json", "w", encoding="utf-8") as f:
+              json.dump(catalog, f, indent=2)
+          PY
+
+      - name: Run sandboxed model transfer and cluster scaling simulation
+        run: |
+          mkdir -p overlays cluster_scale
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          catalog = json.loads(Path("hf-model-catalog.json").read_text(encoding="utf-8"))
+          overlay = []
+          for item in catalog:
+              overlay.append({
+                  "model": item["model"],
+                  "transfer_mode": "double-click-overlay",
+                  "state": "transferred" if item["status"] == "reachable" else "skipped"
+              })
+          Path("overlays/model-transfer-overlay.json").write_text(
+              json.dumps(overlay, indent=2),
+              encoding="utf-8"
+          )
+          Path("cluster_scale/scale-plan.txt").write_text(
+              "scale_factor=${{ matrix.scale_factor }}\nstrategy=max-hardware-allowed\n",
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Upload ConTAinerSwich.X runner artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hf-container-switch-${{ matrix.container_image }}-x${{ matrix.scale_factor }}
+          path: |
+            ConTAinerSwich.X
+            hf-model-catalog.json
+            overlays/model-transfer-overlay.json
+            cluster_scale/scale-plan.txt
