@@ -48,16 +48,9 @@ jobs:
 
       - name: Run mirrored image quantum dependency test container
         run: |
-          docker run --rm "${MIRROR_IMAGE}" sh -lc "\
-            python -m pip install --upgrade pip && \
-            python -m pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane azure-quantum && \
-            python - <<'PY'
-from importlib import import_module
-modules = ['qiskit', 'cirq', 'pennylane', 'azure.quantum']
-for name in modules:
-    import_module(name)
-print('Quantum dependency imports succeeded.')
-PY"
+          docker run --rm "${MIRROR_IMAGE}" sh -lc "python -m pip install --upgrade pip"
+          docker run --rm "${MIRROR_IMAGE}" sh -lc "python -m pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane azure-quantum"
+          docker run --rm "${MIRROR_IMAGE}" sh -lc "python -c \"from importlib import import_module; [import_module(m) for m in ['qiskit','cirq','pennylane','azure.quantum']]; print('Quantum dependency imports succeeded.')\""
 
       - name: Save mirrored image test summary
         run: |
