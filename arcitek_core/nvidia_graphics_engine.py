@@ -295,7 +295,7 @@ class NvidiaGraphicsEngine:
         """Seed representative Nvidia GPU devices for environments without a GPU."""
         defaults = [
             (0,  "NVIDIA H200 SXM5",         NvidiaArchitecture.HOPPER,
-             141.0, 16896, 528, 0,  4800.0,  67.0, 134.0, 268.0, 1070.0,
+             141.0, 16896, 528, 0,  4800.0,  67.0, 134.0, 268.0, 1979.0,
              NvlinkTopology.NVSWITCH_3, "560.35.03", "12.6"),
             (1,  "NVIDIA RTX 4090",           NvidiaArchitecture.ADA_LOVELACE,
               24.0, 16384, 512, 128, 1008.0,  82.6, 165.2, 330.4,  660.8,
