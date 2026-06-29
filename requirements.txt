@@ -67,3 +67,42 @@ celery>=5.3.0
 gunicorn>=21.2.0
 nginx>=1.25.0
 
+# -----------------------------------------------------------------------
+# Nvidia GPU / CUDA / TensorRT (ArciTEK.AI Nvidia Graphics Engine)
+# -----------------------------------------------------------------------
+
+# CUDA Python bindings (runtime + driver)
+cuda-python>=12.6.0
+
+# CuPy – NumPy-compatible array library on CUDA
+cupy-cuda12x>=13.3.0
+
+# TensorRT Python bindings (requires matching TensorRT installation)
+tensorrt>=10.6.0
+
+# TensorRT helper utilities
+tensorrt-lean>=10.6.0
+tensorrt-dispatch>=10.6.0
+
+# ONNX and ONNX Runtime with CUDA / TensorRT execution providers
+onnx>=1.21.0
+onnxruntime-gpu>=1.20.1
+
+# Nvidia Triton Inference Server client
+tritonclient[all]>=2.52.0
+
+# PyNvVideoCodec – NVENC / NVDEC hardware video codec support
+PyNvVideoCodec>=1.0.1
+
+# NVIDIA DALI – GPU-accelerated data loading pipeline
+nvidia-dali-cuda120>=1.43.0
+
+# cuDNN Python bindings
+nvidia-cudnn-cu12>=9.5.1
+
+# Nvidia NVFuser / APEX for custom CUDA kernels and mixed precision
+apex>=0.1
+
+# Nvidia nvitop – GPU resource monitoring
+nvitop>=1.3.2
+

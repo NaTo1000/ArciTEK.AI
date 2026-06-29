@@ -650,6 +650,369 @@ class ArciTEKTerminal:
         
         return result
 
+# ---------------------------------------------------------------------------
+# Microsoft Edge browser support
+# ---------------------------------------------------------------------------
+
+class BrowserEngine(Enum):
+    CHROMIUM = "chromium"
+    GECKO = "gecko"
+    WEBKIT = "webkit"
+
+
+class EdgeCapability(Enum):
+    WEBGPU = "webgpu"
+    WEBNN = "webnn"
+    WASM_SIMD = "wasm_simd"
+    WASM_THREADS = "wasm_threads"
+    WEBCODECS = "webcodecs"
+    WEBTRANSPORT = "webtransport"
+    WEBBLUETOOTH = "webbluetooth"
+    PWA = "progressive_web_app"
+    READING_VIEW = "reading_view"
+    EDGE_SIDEBAR = "edge_sidebar"
+    COPILOT_INTEGRATION = "copilot_integration"
+    ONNX_RUNTIME_WEB = "onnx_runtime_web"
+
+
+@dataclass
+class EdgeBrowserConfig:
+    """Configuration block for Microsoft Edge browser compatibility."""
+    edge_version: str
+    engine: BrowserEngine
+    enabled_capabilities: List[EdgeCapability]
+    webgpu_adapter: Optional[str]
+    webnn_backend: str
+    hardware_acceleration: bool
+    gpu_vendor: str
+    gpu_device: str
+    pwa_enabled: bool
+    copilot_sidebar: bool
+    onnx_ep: str                    # Execution provider: "webgpu" | "wasm" | "cpu"
+    content_security_policy: str
+
+
+@dataclass
+class PWAManifest:
+    """Progressive Web App manifest for Edge installation."""
+    name: str
+    short_name: str
+    description: str
+    start_url: str
+    display: str                    # "standalone" | "fullscreen" | "minimal-ui"
+    orientation: str
+    theme_color: str
+    background_color: str
+    icons: List[Dict[str, str]]
+    screenshots: List[Dict[str, str]]
+    categories: List[str]
+    edge_side_panel: Dict[str, Any]
+
+
+@dataclass
+class EdgeWebNNConfig:
+    """WebNN (Web Neural Network API) configuration for Edge + Nvidia GPU."""
+    backend: str                    # "gpu" | "cpu" | "npu"
+    device_preference: str
+    model_format: str               # "onnx" | "tflite"
+    ort_version: str
+    supported_ops: List[str]
+    max_batch_size: int
+    fp16_enabled: bool
+    int8_enabled: bool
+    power_preference: str           # "high-performance" | "low-power"
+
+
+class EdgeBrowserSupport:
+    """
+    Microsoft Edge browser support manager for ArciTEK.AI.
+
+    Handles Edge-specific APIs including WebGPU, WebNN (ONNX Runtime Web),
+    Progressive Web App installation, Copilot sidebar integration, and the
+    latest Edge version feature flags.
+    """
+
+    # Latest stable Edge version as of 2026-06
+    LATEST_EDGE_VERSION = "136.0.2592.68"
+    EDGE_WEBGPU_TIER = "tier3"       # Full tier-3 WebGPU feature support
+
+    def __init__(self):
+        self.version = "1.0.0"
+        self.config: Optional[EdgeBrowserConfig] = None
+        self.pwa_manifest: Optional[PWAManifest] = None
+        self.webnn_config: Optional[EdgeWebNNConfig] = None
+        self._capability_cache: Dict[str, bool] = {}
+
+        print("\n🌐 Microsoft Edge Browser Support Initialised")
+        print(f"   Edge version: {self.LATEST_EDGE_VERSION}")
+        print("   WebGPU | WebNN | ONNX Runtime | PWA | Copilot Sidebar")
+
+        self._configure_defaults()
+
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+
+    def _configure_defaults(self):
+        """Apply production-grade Edge defaults."""
+        self.config = EdgeBrowserConfig(
+            edge_version=self.LATEST_EDGE_VERSION,
+            engine=BrowserEngine.CHROMIUM,
+            enabled_capabilities=[
+                EdgeCapability.WEBGPU,
+                EdgeCapability.WEBNN,
+                EdgeCapability.WASM_SIMD,
+                EdgeCapability.WASM_THREADS,
+                EdgeCapability.WEBCODECS,
+                EdgeCapability.WEBTRANSPORT,
+                EdgeCapability.PWA,
+                EdgeCapability.EDGE_SIDEBAR,
+                EdgeCapability.COPILOT_INTEGRATION,
+                EdgeCapability.ONNX_RUNTIME_WEB,
+            ],
+            webgpu_adapter="nvidia",
+            webnn_backend="gpu",
+            hardware_acceleration=True,
+            gpu_vendor="NVIDIA Corporation",
+            gpu_device="NVIDIA RTX / GeForce GPU",
+            pwa_enabled=True,
+            copilot_sidebar=True,
+            onnx_ep="webgpu",
+            content_security_policy=(
+                "default-src 'self'; "
+                "script-src 'self' 'wasm-unsafe-eval'; "
+                "connect-src 'self' https://*.arcitek.ai wss://*.arcitek.ai; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "worker-src blob:;"
+            ),
+        )
+
+        self.webnn_config = EdgeWebNNConfig(
+            backend="gpu",
+            device_preference="gpu",
+            model_format="onnx",
+            ort_version="1.20.1",
+            supported_ops=[
+                "Conv", "ConvTranspose", "Gemm", "MatMul", "Add", "Sub",
+                "Mul", "Div", "Relu", "Sigmoid", "Tanh", "Softmax",
+                "BatchNormalization", "LayerNormalization", "GroupNormalization",
+                "InstanceNormalization", "MaxPool", "AveragePool",
+                "GlobalAveragePool", "Flatten", "Reshape", "Transpose",
+                "Concat", "Split", "Gather", "Scatter", "Attention",
+                "MultiHeadAttention", "EmbedLayerNormalization",
+                "SkipLayerNormalization", "FastGelu", "Gelu",
+            ],
+            max_batch_size=32,
+            fp16_enabled=True,
+            int8_enabled=True,
+            power_preference="high-performance",
+        )
+        print(f"   ✅ WebNN backend=gpu | ORT v{self.webnn_config.ort_version} | "
+              f"{len(self.webnn_config.supported_ops)} ops supported")
+
+    def generate_pwa_manifest(
+        self,
+        app_name: str = "ArciTEK.AI",
+        start_url: str = "/",
+        theme_color: str = "#0F0F23",
+    ) -> PWAManifest:
+        """Generate a PWA manifest suitable for Edge side-panel installation."""
+        self.pwa_manifest = PWAManifest(
+            name=app_name,
+            short_name="ArciTEK",
+            description=(
+                "ArciTEK.AI – Ultimate Quantum-Enhanced AI Development Platform. "
+                "Build, deploy and monitor AI-powered applications with quantum precision."
+            ),
+            start_url=start_url,
+            display="standalone",
+            orientation="any",
+            theme_color=theme_color,
+            background_color="#0A0A1A",
+            icons=[
+                {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+                {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+                {"src": "/icons/icon-1024.png", "sizes": "1024x1024", "type": "image/png"},
+            ],
+            screenshots=[
+                {"src": "/screenshots/desktop.png",  "sizes": "1920x1080", "type": "image/png", "form_factor": "wide"},
+                {"src": "/screenshots/mobile.png",   "sizes": "390x844",   "type": "image/png", "form_factor": "narrow"},
+            ],
+            categories=["developer-tools", "productivity", "utilities", "ai"],
+            edge_side_panel={
+                "preferred_width": 420,
+                "can_float": True,
+                "default_mode": "sidebar",
+            },
+        )
+        print(f"\n📱 PWA manifest generated for '{app_name}'")
+        print(f"   Edge side-panel: {self.pwa_manifest.edge_side_panel}")
+        return self.pwa_manifest
+
+    def get_webgpu_device_descriptor(self, power_preference: str = "high-performance") -> Dict[str, Any]:
+        """
+        Return the WebGPU GPURequestAdapterOptions and GPUDeviceDescriptor
+        to request the Nvidia GPU in Microsoft Edge.
+        """
+        return {
+            "requestAdapterOptions": {
+                "powerPreference": power_preference,
+                "forceFallbackAdapter": False,
+                "featureLevel": "core",
+            },
+            "deviceDescriptor": {
+                "requiredFeatures": [
+                    "shader-f16",
+                    "timestamp-query",
+                    "indirect-first-instance",
+                    "texture-compression-bc",
+                    "bgra8unorm-storage",
+                    "float32-filterable",
+                    "dual-source-blending",
+                    "subgroups",
+                ],
+                "requiredLimits": {
+                    "maxTextureDimension2D": 32768,
+                    "maxBufferSize": 2147483648,
+                    "maxComputeWorkgroupSizeX": 1024,
+                    "maxComputeWorkgroupSizeY": 1024,
+                    "maxComputeWorkgroupSizeZ": 64,
+                    "maxComputeInvocationsPerWorkgroup": 1024,
+                    "maxComputeWorkgroupStorageSize": 65536,
+                    "maxStorageBufferBindingSize": 2147483648,
+                    "maxVertexBuffers": 16,
+                    "maxBindGroups": 8,
+                },
+            },
+            "edge_flags": {
+                "--enable-features": "WebGPU,WebNN,WebNNWebGPU",
+                "--disable-features": "UseSkiaRenderer",
+                "--enable-unsafe-webgpu": False,   # Safe-mode (stable API)
+                "--use-angle": "vulkan",
+            },
+        }
+
+    def get_webnn_session_options(self) -> Dict[str, Any]:
+        """
+        Return InferenceSession options for ONNX Runtime Web running
+        on the WebNN + WebGPU execution path in Edge.
+        """
+        cfg = self.webnn_config
+        return {
+            "executionProviders": [
+                {
+                    "name": "webnn",
+                    "deviceType": cfg.device_preference,
+                    "powerPreference": cfg.power_preference,
+                },
+                {"name": "webgpu"},
+                {"name": "wasm"},
+            ],
+            "graphOptimizationLevel": "all",
+            "enableProfiling": False,
+            "executionMode": "sequential",
+            "extra": {
+                "session.use_ort_model_bytes_directly": "1",
+                "session.disable_prepacking": "0",
+            },
+            "freeDimensionOverrides": {},
+        }
+
+    def check_edge_capabilities(self) -> Dict[str, bool]:
+        """
+        Return a capability-detection map for the current Edge configuration.
+        Reflects the features enabled in self.config.
+        """
+        if not self.config:
+            return {}
+
+        enabled = {cap.value for cap in self.config.enabled_capabilities}
+        self._capability_cache = {
+            "webgpu": EdgeCapability.WEBGPU.value in enabled,
+            "webnn": EdgeCapability.WEBNN.value in enabled,
+            "wasm_simd": EdgeCapability.WASM_SIMD.value in enabled,
+            "wasm_threads": EdgeCapability.WASM_THREADS.value in enabled,
+            "pwa_installable": EdgeCapability.PWA.value in enabled,
+            "edge_sidebar": EdgeCapability.EDGE_SIDEBAR.value in enabled,
+            "copilot_integration": EdgeCapability.COPILOT_INTEGRATION.value in enabled,
+            "onnx_runtime_web": EdgeCapability.ONNX_RUNTIME_WEB.value in enabled,
+            "hardware_acceleration": self.config.hardware_acceleration,
+            "fp16_inference": self.webnn_config.fp16_enabled if self.webnn_config else False,
+            "int8_inference": self.webnn_config.int8_enabled if self.webnn_config else False,
+        }
+        return self._capability_cache
+
+    def get_edge_mcp_server_config(self) -> Dict[str, Any]:
+        """
+        MCP (Model Context Protocol) server configuration optimised
+        for Edge's fetch/WebSocket constraints and CSP rules.
+        """
+        return {
+            "transport": "websocket",
+            "endpoint": "wss://mcp.arcitek.ai/edge/v1",
+            "protocols": ["mcp-v1", "mcp-v2"],
+            "heartbeat_interval_ms": 15000,
+            "reconnect_attempts": 5,
+            "tls": True,
+            "headers": {
+                "User-Agent": f"ArciTEK-Edge/{self.LATEST_EDGE_VERSION}",
+                "X-Edge-Capability": "webgpu,webnn",
+            },
+        }
+
+    def export_edge_config(self) -> Dict[str, Any]:
+        """Export the full Edge browser configuration."""
+        return {
+            "version": self.version,
+            "edge_version": self.LATEST_EDGE_VERSION,
+            "config": {
+                "webgpu_adapter": self.config.webgpu_adapter if self.config else None,
+                "webnn_backend": self.config.webnn_backend if self.config else None,
+                "hardware_acceleration": self.config.hardware_acceleration if self.config else False,
+                "pwa_enabled": self.config.pwa_enabled if self.config else False,
+                "copilot_sidebar": self.config.copilot_sidebar if self.config else False,
+                "onnx_ep": self.config.onnx_ep if self.config else None,
+            },
+            "capabilities": self.check_edge_capabilities(),
+            "webnn": {
+                "ort_version": self.webnn_config.ort_version if self.webnn_config else None,
+                "ops_count": len(self.webnn_config.supported_ops) if self.webnn_config else 0,
+            },
+            "pwa": {
+                "name": self.pwa_manifest.name if self.pwa_manifest else None,
+            },
+        }
+
+
+# Attach Edge support to ArciTEKTerminal at class level
+def _init_edge_support(self):
+    """Initialise Microsoft Edge browser support on the terminal."""
+    self.edge_support = EdgeBrowserSupport()
+    self.edge_support.generate_pwa_manifest("ArciTEK.AI Terminal")
+    caps = self.edge_support.check_edge_capabilities()
+    active_caps = [k for k, v in caps.items() if v]
+    print(f"   ✅ Edge capabilities active: {len(active_caps)} | "
+          f"{', '.join(active_caps[:4])}{'...' if len(active_caps) > 4 else ''}")
+
+
+ArciTEKTerminal.initialize_edge_support = _init_edge_support
+
+
+# ---------------------------------------------------------------------------
+# Patched ArciTEKTerminal.__init__ to include Edge + Nvidia initialisation
+# ---------------------------------------------------------------------------
+_original_terminal_init = ArciTEKTerminal.__init__
+
+
+def _patched_terminal_init(self):
+    _original_terminal_init(self)
+    self.initialize_edge_support()
+
+
+ArciTEKTerminal.__init__ = _patched_terminal_init
+
+
 def main():
     """Main terminal application"""
     print("🚀 Initializing ArciTEK.AI Ultimate Terminal System...")
