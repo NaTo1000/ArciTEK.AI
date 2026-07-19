@@ -35,10 +35,12 @@ class ComputeQueue:
 
     def __init__(self, workers: int = 2) -> None:
         self.started_at = time.time()
+        self.workers = max(1, min(workers, 16))
+        self.capacity = self.workers * 8
         self._jobs: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(
-            max_workers=max(1, min(workers, 16)),
+            max_workers=self.workers,
             thread_name_prefix="arcitek-compute",
         )
 
@@ -63,6 +65,11 @@ class ComputeQueue:
             "error": None,
         }
         with self._lock:
+            active = sum(
+                item["status"] in {"queued", "running"} for item in self._jobs.values()
+            )
+            if active >= self.capacity:
+                raise ValueError("Compute queue is at capacity")
             self._jobs[job_id] = job
             self._trim_jobs()
         self._executor.submit(self._run, job_id)
@@ -86,7 +93,7 @@ class ComputeQueue:
             "queuedJobs": queued,
             "completedJobs": completed,
             "uptimeSeconds": int(time.time() - self.started_at),
-            "workers": self._executor._max_workers,
+            "workers": self.workers,
         }
 
     def _run(self, job_id: str) -> None:
@@ -146,7 +153,20 @@ class ComputeQueue:
         previous, current = 0, 1
         for _ in range(size):
             previous, current = current, previous + current
-        return {"index": size, "digits": len(str(previous)), "tail": str(previous)[-16:]}
+        digits = (
+            1
+            if size < 2
+            else math.floor(
+                size * math.log10((1 + math.sqrt(5)) / 2)
+                - math.log10(math.sqrt(5))
+            )
+            + 1
+        )
+        return {
+            "index": size,
+            "digits": digits,
+            "tail": f"{previous % 10**16:016d}",
+        }
 
     @staticmethod
     def _cpu_load() -> float:

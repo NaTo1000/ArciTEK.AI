@@ -70,10 +70,9 @@ function formatUptime(seconds) {
   return `${Math.floor(seconds / 86400)}d`;
 }
 
-function renderBars(cpu) {
+function renderBars() {
   const bars = document.querySelector('#cpu-bars');
-  const heights = [28, 48, 34, 68, 49, 75, 42, 60, 36, 82, 55, Math.max(12, cpu)];
-  bars.innerHTML = heights.map((height) => `<i style="height:${height}%"></i>`).join('');
+  bars.innerHTML = '<i></i>'.repeat(12);
 }
 
 async function refreshMetrics() {
@@ -88,7 +87,7 @@ async function refreshMetrics() {
     elements.queued.textContent = metrics.queuedJobs;
     elements.uptime.textContent = formatUptime(metrics.uptimeSeconds);
     elements.workers.textContent = `${metrics.workers} active`;
-    renderBars(metrics.cpuLoad);
+    renderBars();
   } catch {
     showToast('Unable to reach the compute API', true);
   }
@@ -170,6 +169,6 @@ elements.form.addEventListener('submit', async (event) => {
   }
 });
 
-renderBars(20);
+renderBars();
 Promise.all([refreshMetrics(), refreshJobs()]);
 window.setInterval(() => Promise.all([refreshMetrics(), refreshJobs()]), 5000);
