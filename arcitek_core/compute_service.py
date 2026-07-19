@@ -139,11 +139,15 @@ class ComputeQueue:
     @staticmethod
     def _execute(workload: str, size: int) -> dict[str, Any]:
         if workload == "prime-scan":
-            count = 0
-            for candidate in range(2, size + 1):
-                if all(candidate % divisor for divisor in range(2, math.isqrt(candidate) + 1)):
-                    count += 1
-            return {"primesFound": count, "range": size}
+            sieve = bytearray(b"\x01") * (size + 1)
+            sieve[:2] = b"\x00\x00"
+            for candidate in range(2, math.isqrt(size) + 1):
+                if sieve[candidate]:
+                    start = candidate * candidate
+                    sieve[start::candidate] = b"\x00" * (
+                        ((size - start) // candidate) + 1
+                    )
+            return {"primesFound": sum(sieve), "range": size}
         if workload == "hash-benchmark":
             digest = b"arcitek"
             for _ in range(size):
