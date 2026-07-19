@@ -4,20 +4,20 @@
   "description": "The Ultimate Quantum-Enhanced Precision Build System",
   "main": "arcitek_ui/index.js",
   "scripts": {
-    "start": "./startup.sh start",
+    "start": "python3 -m arcitek_core.compute_service --host 0.0.0.0",
     "stop": "./startup.sh stop",
     "restart": "./startup.sh restart",
     "health": "./startup.sh health",
     "upgrade": "python3 upgrade.py upgrade",
     "status": "python3 upgrade.py status",
-    "test": "npm run test:unit && npm run test:integration",
+    "test": "python3 -m unittest discover -s tests -p 'test_*.py'",
     "test:unit": "jest tests/unit/",
     "test:integration": "jest tests/integration/",
     "test:quantum": "jest tests/quantum/",
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "dev": "webpack serve --mode development",
-    "lint": "eslint arcitek_ui/ --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint arcitek_ui/web/app.js --env browser,es2022",
     "lint:fix": "eslint arcitek_ui/ --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write arcitek_ui/",
     "docs": "typedoc --out docs/api arcitek_ui/",
@@ -186,4 +186,3 @@
     ]
   }
 }
-

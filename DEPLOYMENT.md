@@ -89,6 +89,21 @@ kubectl apply -f k8s/
 
 You can also deploy ArciTEK.AI to a custom Virtual Private Server (VPS). The `deploy.sh` script provides an option for this, which will `rsync` the project files to your server and set up a `systemd` service for you.
 
+#### Compute SaaS dashboard
+
+Build the browser bundle and start the compute API/dashboard on the VPS:
+
+```bash
+npm install
+npm run build
+ARCITEK_HOST=0.0.0.0 ARCITEK_PORT=8000 ARCITEK_WORKERS=4 npm start
+```
+
+The dashboard and API are served from the same origin at port `8000`. Place a
+TLS-enabled reverse proxy in front of the service before exposing it publicly.
+The compute API accepts only predefined, resource-bounded workloads; it does
+not execute arbitrary commands.
+
 ## Configuration
 
 ArciTEK.AI is configured through a `.env` file. A template file, `.env.template`, is provided in the repository. Copy this file to `.env` and fill in your API keys and other configuration options.
@@ -112,4 +127,3 @@ The platform includes a monitoring and diagnostics system, `monitor.py`. You can
 ## Troubleshooting
 
 If you encounter any issues during deployment, please refer to the `TROUBLESHOOTING.md` file in the `docs` directory for common problems and solutions.
-
