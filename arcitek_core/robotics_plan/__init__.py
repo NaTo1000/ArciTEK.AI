@@ -2,8 +2,10 @@
 
 Stdlib-only, dependency-free package implementing:
 
-* ``repository`` -- thread-safe in-memory project/revision store with
+* ``repository`` -- thread-safe SQLite project/revision store with
   immutable revisions, rollback-as-new-revision, and human approval gating.
+* ``knowledge`` -- append-only temporal knowledge, provenance, tags,
+  citations, relationships, and bounded context retrieval.
 * ``orchestrator`` -- dependency-aware, parallel expert-task orchestrator
   that only produces structured plan data (no code execution, no external
   AI calls).
@@ -20,16 +22,19 @@ never claim complete or certified accuracy. Any release/final state
 requires an explicit human approval action.
 """
 
-from . import formats, orchestrator, repository, rules, simulation
+from . import formats, knowledge, orchestrator, repository, rules, simulation
+from .knowledge import KnowledgeRepository
 from .repository import ProjectRepository
 from .orchestrator import ExpertPlanOrchestrator
 
 __all__ = [
     "formats",
+    "knowledge",
     "orchestrator",
     "repository",
     "rules",
     "simulation",
     "ProjectRepository",
+    "KnowledgeRepository",
     "ExpertPlanOrchestrator",
 ]

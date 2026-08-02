@@ -276,6 +276,70 @@ class RoboticsPlanAPITests(unittest.TestCase):
         self.assertIn("project.created", actions)
         self.assertIn("revision.approved", actions)
 
+    # -- temporal knowledge --------------------------------------------------
+
+    def test_knowledge_timeline_context_and_provenance_endpoints(self):
+        project = self._create_project(name="Knowledge Project")
+        status, payload = request(
+            self.base_url,
+            "POST",
+            "/api/knowledge/sources",
+            {
+                "source_type": "paper",
+                "canonical_uri": "https://example.test/api-paper",
+                "title": "API research source",
+                "metadata": {"license": "open"},
+            },
+        )
+        self.assertEqual(status, 201)
+        source = payload["source"]
+
+        status, payload = request(
+            self.base_url,
+            "POST",
+            f"/api/projects/{project['id']}/knowledge",
+            {
+                "actor": "researcher",
+                "reason": "Relevant evidence",
+                "record_type": "claim",
+                "content": {"claim": "Use guarded control paths"},
+                "source_id": source["id"],
+                "confidence": 0.8,
+                "tags": ["safety"],
+            },
+        )
+        self.assertEqual(status, 201)
+        record = payload["record"]
+
+        status, payload = request(
+            self.base_url,
+            "POST",
+            f"/api/knowledge/{record['id']}/citations",
+            {
+                "source_id": source["id"],
+                "locator": "section 2",
+                "quote": "Guarded control paths reduce risk.",
+            },
+        )
+        self.assertEqual(status, 201)
+
+        status, payload = request(
+            self.base_url,
+            "GET",
+            f"/api/projects/{project['id']}/knowledge?tag=safety",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(len(payload["records"]), 1)
+        self.assertEqual(len(payload["records"][0]["citations"]), 1)
+
+        status, payload = request(
+            self.base_url,
+            "GET",
+            f"/api/projects/{project['id']}/knowledge/context?tag=safety",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["context"]["record_count"], 1)
+
     # -- planning / orchestration ---------------------------------------------
 
     def test_create_plan_runs_all_roles_and_get_plan(self):

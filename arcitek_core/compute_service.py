@@ -19,7 +19,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from .robotics_plan import ExpertPlanOrchestrator, ProjectRepository, formats, simulation
+from .robotics_plan import (
+    ExpertPlanOrchestrator,
+    KnowledgeRepository,
+    ProjectRepository,
+    formats,
+    simulation,
+)
 from .robotics_plan.storage import SQLiteStore
 from .robotics_plan.validation import ValidationError
 
@@ -212,6 +218,7 @@ class RoboticsPlanAPI:
     def __init__(self, workers: int = 4, database: str | Path = ":memory:") -> None:
         self.store = SQLiteStore(database)
         self.repo = ProjectRepository(store=self.store)
+        self.knowledge = KnowledgeRepository(store=self.store)
         self.orchestrator = ExpertPlanOrchestrator(workers=workers, store=self.store)
         self._routes: list[tuple[str, re.Pattern, Any]] = [
             ("GET", re.compile(r"^/api/dashboard$"), self._get_dashboard),
@@ -263,6 +270,39 @@ class RoboticsPlanAPI:
                 "GET",
                 re.compile(rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/events$"),
                 self._get_events,
+            ),
+            (
+                "GET",
+                re.compile(rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/knowledge$"),
+                self._get_knowledge,
+            ),
+            (
+                "POST",
+                re.compile(rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/knowledge$"),
+                self._append_knowledge,
+            ),
+            (
+                "GET",
+                re.compile(
+                    rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/knowledge/context$"
+                ),
+                self._get_knowledge_context,
+            ),
+            ("GET", re.compile(r"^/api/knowledge/sources$"), self._list_sources),
+            ("POST", re.compile(r"^/api/knowledge/sources$"), self._add_source),
+            (
+                "POST",
+                re.compile(
+                    rf"^/api/knowledge/(?P<record_id>{_ID_SEGMENT})/citations$"
+                ),
+                self._add_citation,
+            ),
+            (
+                "POST",
+                re.compile(
+                    rf"^/api/knowledge/(?P<record_id>{_ID_SEGMENT})/relationships$"
+                ),
+                self._add_relationship,
             ),
             (
                 "GET",
@@ -406,6 +446,75 @@ class RoboticsPlanAPI:
         limit = int(query.get("limit", ["200"])[0])
         events = self.repo.list_events(params["project_id"], limit=limit)
         return HTTPStatus.OK, {"events": events}
+
+    # -- temporal knowledge -------------------------------------------------
+    def _list_sources(self, params, query, body):
+        limit = int(query.get("limit", ["200"])[0])
+        return HTTPStatus.OK, {"sources": self.knowledge.list_sources(limit)}
+
+    def _add_source(self, params, query, body):
+        source = self.knowledge.add_source(
+            source_type=body.get("source_type"),
+            canonical_uri=body.get("canonical_uri"),
+            title=body.get("title"),
+            metadata=body.get("metadata"),
+        )
+        return HTTPStatus.CREATED, {"source": source}
+
+    def _get_knowledge(self, params, query, body):
+        records = self.knowledge.timeline(
+            params["project_id"],
+            tag=query.get("tag", [None])[0],
+            source_id=query.get("source_id", [None])[0],
+            build_id=query.get("build_id", [None])[0],
+            agent_run_id=query.get("agent_run_id", [None])[0],
+            record_type=query.get("record_type", [None])[0],
+            limit=int(query.get("limit", ["200"])[0]),
+        )
+        return HTTPStatus.OK, {"records": records}
+
+    def _append_knowledge(self, params, query, body):
+        record = self.knowledge.append_record(
+            project_id=params["project_id"],
+            actor=body.get("actor", "anonymous"),
+            reason=body.get("reason"),
+            record_type=body.get("record_type"),
+            content=body.get("content"),
+            parent_id=body.get("parent_id"),
+            supersedes_id=body.get("supersedes_id"),
+            source_id=body.get("source_id"),
+            build_id=body.get("build_id"),
+            agent_run_id=body.get("agent_run_id"),
+            confidence=body.get("confidence"),
+            tags=body.get("tags"),
+        )
+        return HTTPStatus.CREATED, {"record": record}
+
+    def _get_knowledge_context(self, params, query, body):
+        raw_tags = query.get("tag", [])
+        packet = self.knowledge.context_packet(
+            params["project_id"],
+            tags=raw_tags,
+            limit=int(query.get("limit", ["50"])[0]),
+        )
+        return HTTPStatus.OK, {"context": packet}
+
+    def _add_citation(self, params, query, body):
+        citation = self.knowledge.add_citation(
+            params["record_id"],
+            source_id=body.get("source_id"),
+            locator=body.get("locator"),
+            quote=body.get("quote"),
+        )
+        return HTTPStatus.CREATED, {"citation": citation}
+
+    def _add_relationship(self, params, query, body):
+        relationship = self.knowledge.add_relationship(
+            params["record_id"],
+            body.get("to_record_id"),
+            body.get("relationship_type"),
+        )
+        return HTTPStatus.CREATED, {"relationship": relationship}
 
     # -- plans / orchestration ----------------------------------------------
     def _list_plans(self, params, query, body):

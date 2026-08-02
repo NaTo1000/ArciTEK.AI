@@ -1,4 +1,4 @@
-"""Thread-safe, in-memory project repository for the robotics engineering plan.
+"""Thread-safe, SQLite-backed repository for the robotics engineering plan.
 
 Design invariants:
 

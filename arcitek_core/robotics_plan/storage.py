@@ -12,6 +12,7 @@ from typing import Iterator
 SCHEMA = """
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
+PRAGMA synchronous = FULL;
 
 CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
@@ -121,6 +122,7 @@ CREATE TABLE IF NOT EXISTS knowledge_records (
     parent_id TEXT REFERENCES knowledge_records(id),
     supersedes_id TEXT REFERENCES knowledge_records(id),
     source_id TEXT REFERENCES knowledge_sources(id),
+    agent_run_id TEXT REFERENCES agent_runs(id),
     actor TEXT NOT NULL,
     reason TEXT NOT NULL,
     record_type TEXT NOT NULL,
@@ -215,6 +217,11 @@ CREATE TRIGGER IF NOT EXISTS revisions_no_delete
 BEFORE DELETE ON revisions BEGIN
     SELECT RAISE(ABORT, 'revisions are immutable');
 END;
+CREATE TRIGGER IF NOT EXISTS projects_revision_forward_only
+BEFORE UPDATE OF current_revision ON projects
+WHEN NEW.current_revision <= OLD.current_revision BEGIN
+    SELECT RAISE(ABORT, 'current revision must move forward');
+END;
 CREATE TRIGGER IF NOT EXISTS approvals_no_update
 BEFORE UPDATE ON revision_approvals BEGIN
     SELECT RAISE(ABORT, 'revision approvals are append-only');
@@ -255,6 +262,38 @@ CREATE TRIGGER IF NOT EXISTS knowledge_records_no_delete
 BEFORE DELETE ON knowledge_records BEGIN
     SELECT RAISE(ABORT, 'knowledge records are immutable');
 END;
+CREATE TRIGGER IF NOT EXISTS knowledge_sources_no_update
+BEFORE UPDATE ON knowledge_sources BEGIN
+    SELECT RAISE(ABORT, 'knowledge sources are immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS knowledge_sources_no_delete
+BEFORE DELETE ON knowledge_sources BEGIN
+    SELECT RAISE(ABORT, 'knowledge sources are immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS citations_no_update
+BEFORE UPDATE ON citations BEGIN
+    SELECT RAISE(ABORT, 'citations are append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS citations_no_delete
+BEFORE DELETE ON citations BEGIN
+    SELECT RAISE(ABORT, 'citations are append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS relationships_no_update
+BEFORE UPDATE ON knowledge_relationships BEGIN
+    SELECT RAISE(ABORT, 'knowledge relationships are append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS relationships_no_delete
+BEFORE DELETE ON knowledge_relationships BEGIN
+    SELECT RAISE(ABORT, 'knowledge relationships are append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS record_tags_no_update
+BEFORE UPDATE ON knowledge_record_tags BEGIN
+    SELECT RAISE(ABORT, 'knowledge record tags are append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS record_tags_no_delete
+BEFORE DELETE ON knowledge_record_tags BEGIN
+    SELECT RAISE(ABORT, 'knowledge record tags are append-only');
+END;
 """
 
 
@@ -275,6 +314,16 @@ class SQLiteStore:
         self.connection.row_factory = sqlite3.Row
         with self.lock:
             self.connection.executescript(SCHEMA)
+            columns = {
+                row["name"]
+                for row in self.connection.execute(
+                    "PRAGMA table_info(knowledge_records)"
+                ).fetchall()
+            }
+            if "agent_run_id" not in columns:
+                self.connection.execute(
+                    "ALTER TABLE knowledge_records ADD COLUMN agent_run_id TEXT"
+                )
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:

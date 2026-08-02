@@ -135,7 +135,7 @@ relying on it for anything safety-critical.
 
 ### What it actually does
 
-- **Project & revision repository** — thread-safe, in-memory storage of
+- **Project & revision repository** — thread-safe SQLite storage of
   projects and *immutable*, numbered revisions (requirements, parts,
   wiring, hydraulics, PCB data, findings). Rollback never rewrites
   history: it always appends a brand-new revision with the target
@@ -143,6 +143,11 @@ relying on it for anything safety-critical.
   release/approval status is tracked as a separate append-only decision
   log tied to a specific revision number — a human must explicitly
   approve before a revision or plan is considered released.
+- **Temporal knowledge store** — append-only knowledge versions with parent
+  and supersession links, content hashes, source provenance, citations, tags,
+  relationships, chronological retrieval, and bounded context packets. The
+  default service database is `data/arcitek.db`; set `ARCITEK_DATABASE` or
+  pass `--database` to choose another path.
 - **Expert task orchestrator** — a fixed, dependency-aware DAG of expert
   roles (systems architect → mechanical/electrical/hydraulics/PCB →
   simulation → safety review) executed in parallel with a
@@ -244,4 +249,3 @@ This project is proprietary and confidential. All rights reserved.
 **ArciTEK.AI** - Where quantum computing meets artificial intelligence to create infinite possibilities. ♾️2025
 
 *Every build is a work of art to be studied and mastered.*
-
