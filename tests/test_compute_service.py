@@ -48,5 +48,53 @@ class ComputeServerTests(unittest.TestCase):
         self.assertEqual(context.exception.code, 400)
 
 
+class AuthenticatedComputeServerTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.server = create_server(
+            "127.0.0.1",
+            0,
+            1,
+            api_token="test-control-plane-token",
+            principal="authenticated-operator",
+        )
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.base_url = f"http://127.0.0.1:{cls.server.server_port}"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def test_protected_api_rejects_missing_token(self):
+        with self.assertRaises(HTTPError) as context:
+            urlopen(f"{self.base_url}/api/projects")
+        self.assertEqual(context.exception.code, 401)
+
+    def test_authenticated_identity_replaces_caller_supplied_author(self):
+        authorization = "Bearer " + "test-control-plane-token"
+        request = Request(
+            f"{self.base_url}/api/projects",
+            data=json.dumps(
+                {"name": "Authenticated", "author": "spoofed-user"}
+            ).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": authorization,
+            },
+            method="POST",
+        )
+        with urlopen(request) as response:
+            project = json.load(response)["project"]
+        revision_request = Request(
+            f"{self.base_url}/api/projects/{project['id']}/revisions/1",
+            headers={"Authorization": authorization},
+        )
+        with urlopen(revision_request) as response:
+            revision = json.load(response)["revision"]
+        self.assertEqual(revision["author"], "authenticated-operator")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -240,6 +240,7 @@ class ExpertPlanOrchestrator:
                 )
 
     def _load_persisted_state(self) -> None:
+        interrupted_plan_ids: list[str] = []
         with self.store.lock:
             connection = self.store.connection
             plan_rows = connection.execute(
@@ -284,6 +285,8 @@ class ExpertPlanOrchestrator:
                     },
                     "approvals": [dict(approval) for approval in approval_rows],
                 }
+                if row["status"] == "running":
+                    interrupted_plan_ids.append(row["id"])
             activity_rows = connection.execute(
                 """
                 SELECT id, plan_id, timestamp, action, details_json
@@ -300,6 +303,24 @@ class ExpertPlanOrchestrator:
             }
             for row in activity_rows[-5_000:]
         ]
+        for plan_id in interrupted_plan_ids:
+            with self._lock:
+                plan = self._plans[plan_id]
+                plan["status"] = "failed"
+                for task in plan["tasks"].values():
+                    if task["status"] == "running":
+                        task["status"] = "failed"
+                        task["output"] = {
+                            "error": "Interrupted by service restart"
+                        }
+                        task["completed_at"] = time.time()
+                        self._persist_task(plan_id, task)
+                self._persist_plan_status(plan_id, "failed")
+            self._log(
+                plan_id,
+                "plan.failed",
+                {"reason": "interrupted by service restart"},
+            )
 
     def _persist_new_plan(self, plan: dict[str, Any]) -> None:
         if self.store is None:

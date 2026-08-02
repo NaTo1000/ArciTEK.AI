@@ -96,11 +96,19 @@ Build the browser bundle and start the compute API/dashboard on the VPS:
 ```bash
 npm install
 npm run build
-ARCITEK_HOST=0.0.0.0 ARCITEK_PORT=8000 ARCITEK_WORKERS=4 npm start
+ARCITEK_HOST=0.0.0.0 ARCITEK_PORT=8000 ARCITEK_WORKERS=4 \
+ARCITEK_API_TOKEN='<random-long-token>' \
+ARCITEK_API_PRINCIPAL='deployment-operator' npm start
 ```
 
 The dashboard and API are served from the same origin at port `8000`. Place a
 TLS-enabled reverse proxy in front of the service before exposing it publicly.
+Non-loopback binding is rejected unless `ARCITEK_API_TOKEN` is set. Protected
+API requests must send that value in the `Authorization` request header using
+the standard bearer authentication scheme. The configured
+`ARCITEK_API_PRINCIPAL` becomes the server-side audit identity instead of
+trusting caller-supplied actor or approver names. Keep both values in the
+runtime environment or a secret manager, never in source control.
 The compute API accepts only predefined, resource-bounded workloads; it does
 not execute arbitrary commands.
 

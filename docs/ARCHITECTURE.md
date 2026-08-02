@@ -77,6 +77,9 @@ not infer truth or silently modify a build.
 The service uses `data/arcitek.db` by default. `ARCITEK_DATABASE` and the
 `--database` command-line option select a different database. In-process tests
 continue to use isolated in-memory databases unless a path is supplied.
+Non-loopback deployments require `ARCITEK_API_TOKEN`; authenticated mutations
+use `ARCITEK_API_PRINCIPAL` as their audit identity. Credentials remain in the
+runtime environment and are never persisted.
 
 ## TWINBRAIN Contract
 

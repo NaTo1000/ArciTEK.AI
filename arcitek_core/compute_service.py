@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+import secrets
 import threading
 import time
 import uuid
@@ -611,6 +612,8 @@ class ComputeRequestHandler(SimpleHTTPRequestHandler):
 
     queue: ComputeQueue
     robotics: RoboticsPlanAPI
+    api_token: str | None = None
+    principal = "api-operator"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(WEB_ROOT), **kwargs)
@@ -618,6 +621,9 @@ class ComputeRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         query = parse_qs(urlparse(self.path).query)
+        if path.startswith("/api/") and path != "/api/health" and not self._authorized():
+            self._json(HTTPStatus.UNAUTHORIZED, {"error": "Authentication required"})
+            return
         if path == "/api/health":
             self._json(
                 HTTPStatus.OK,
@@ -640,6 +646,9 @@ class ComputeRequestHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if not self._authorized():
+            self._json(HTTPStatus.UNAUTHORIZED, {"error": "Authentication required"})
+            return
         if path == "/api/jobs":
             try:
                 content_length = int(self.headers.get("Content-Length", "0"))
@@ -670,11 +679,22 @@ class ComputeRequestHandler(SimpleHTTPRequestHandler):
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             return
 
+        if self.api_token is not None:
+            for identity_field in ("actor", "author", "approver", "requested_by"):
+                body[identity_field] = self.principal
+
         result = self.robotics.dispatch("POST", path, {}, body)
         if result is None:
             self._json(HTTPStatus.NOT_FOUND, {"error": "Endpoint not found"})
             return
         self._json(*result)
+
+    def _authorized(self) -> bool:
+        if self.api_token is None:
+            return True
+        authorization = self.headers.get("Authorization", "")
+        expected = "Bearer " + self.api_token
+        return secrets.compare_digest(authorization, expected)
 
     def end_headers(self) -> None:
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -712,11 +732,20 @@ def create_server(
     port: int,
     workers: int,
     database: str | Path = ":memory:",
+    api_token: str | None = None,
+    principal: str = "api-operator",
 ) -> ThreadingHTTPServer:
     queue = ComputeQueue(workers)
     robotics = RoboticsPlanAPI(workers=workers, database=database)
     handler = type(
-        "ArciTEKHandler", (ComputeRequestHandler,), {"queue": queue, "robotics": robotics}
+        "ArciTEKHandler",
+        (ComputeRequestHandler,),
+        {
+            "queue": queue,
+            "robotics": robotics,
+            "api_token": api_token,
+            "principal": principal,
+        },
     )
     server = ArciTEKHTTPServer((host, port), handler)
     server.store = robotics.store
@@ -738,7 +767,19 @@ def main() -> None:
         help="SQLite database path (default: data/arcitek.db)",
     )
     args = parser.parse_args()
-    server = create_server(args.host, args.port, args.workers, args.database)
+    api_token = os.getenv("ARCITEK_API_TOKEN")
+    if args.host not in {"127.0.0.1", "localhost", "::1"} and not api_token:
+        parser.error(
+            "ARCITEK_API_TOKEN is required when binding outside loopback"
+        )
+    server = create_server(
+        args.host,
+        args.port,
+        args.workers,
+        args.database,
+        api_token=api_token,
+        principal=os.getenv("ARCITEK_API_PRINCIPAL", "api-operator"),
+    )
     print(f"ArciTEK Compute listening on http://{args.host}:{args.port}")
     try:
         server.serve_forever()

@@ -641,24 +641,81 @@ class ProjectRepository:
         content.
         """
 
-        try:
-            target = self.get_revision(project_id, target_revision)
-            current_revision = self.get_project(project_id)["current_revision"]
-        except KeyError as exc:
-            if "revision" in str(exc):
-                raise ValidationError(f"Unknown target revision {target_revision}") from exc
-            raise
-        return self.create_revision(
-            project_id,
-            author=author,
-            message=message or f"Rollback to revision {target_revision}",
-            requirements=target["requirements"],
-            parts=target["parts"],
-            wiring=target["wiring"],
-            hydraulics=target["hydraulics"],
-            pcb=target["pcb"],
-            base_revision=current_revision,
+        author = validate_string(author, "author", max_len=MAX_NAME_LENGTH)
+        message = validate_string(
+            message,
+            "message",
+            max_len=MAX_TEXT_LENGTH,
+            allow_empty=True,
+            default="",
         )
+        with self.store.transaction() as connection:
+            project = self._project_from_row(
+                connection.execute(
+                    "SELECT * FROM projects WHERE id = ?", (project_id,)
+                ).fetchone(),
+                project_id,
+            )
+            target_row = connection.execute(
+                """
+                SELECT * FROM revisions
+                WHERE project_id = ? AND number = ?
+                """,
+                (project_id, target_revision),
+            ).fetchone()
+            if target_row is None:
+                raise ValidationError(
+                    f"Unknown target revision {target_revision}"
+                )
+            revision_count = connection.execute(
+                "SELECT COUNT(*) FROM revisions WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()[0]
+            if revision_count >= MAX_REVISIONS_PER_PROJECT:
+                raise ValidationError(
+                    "Revision capacity reached for this project"
+                )
+            target = self._revision_from_row(target_row)
+            content = sanitize_revision_payload(
+                {
+                    "requirements": target["requirements"],
+                    "parts": target["parts"],
+                    "wiring": target["wiring"],
+                    "hydraulics": target["hydraulics"],
+                    "pcb": target["pcb"],
+                }
+            )
+            next_number = connection.execute(
+                """
+                SELECT COALESCE(MAX(number), 0) + 1
+                FROM revisions WHERE project_id = ?
+                """,
+                (project_id,),
+            ).fetchone()[0]
+            revision = self._build_revision(
+                number=next_number,
+                parent=project["current_revision"],
+                author=author,
+                message=message or f"Rollback to revision {target_revision}",
+                content=content,
+            )
+            self._insert_revision(connection, project_id, revision)
+            connection.execute(
+                "UPDATE projects SET current_revision = ? WHERE id = ?",
+                (next_number, project_id),
+            )
+            self._record_event(
+                connection,
+                project_id,
+                author,
+                "revision.created",
+                {
+                    "revision": next_number,
+                    "parent": project["current_revision"],
+                    "rollback_target": target_revision,
+                },
+            )
+        return self.get_revision(project_id, next_number)
 
     # -- approvals -------------------------------------------------------
     def approve_revision(

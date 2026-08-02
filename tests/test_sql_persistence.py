@@ -128,6 +128,43 @@ class SQLitePersistenceTests(unittest.TestCase):
         )
         restarted_store.close()
 
+    def test_interrupted_plan_is_failed_during_restart(self):
+        store = SQLiteStore(self.database)
+        repository = ProjectRepository(store=store)
+        project = repository.create_project(name="Interrupted", author="alice")
+        orchestrator = ExpertPlanOrchestrator(workers=1, store=store)
+        plan = orchestrator.create_plan(
+            project_id=project["id"],
+            revision=1,
+            requested_by="operator",
+            snapshot=repository.get_revision(project["id"], 1),
+        )
+        with store.transaction() as connection:
+            connection.execute(
+                "UPDATE plans SET status = 'running' WHERE id = ?",
+                (plan["id"],),
+            )
+            connection.execute(
+                """
+                UPDATE plan_tasks
+                SET status = 'running', completed_at = NULL
+                WHERE plan_id = ? AND role = 'safety_reviewer'
+                """,
+                (plan["id"],),
+            )
+        store.close()
+
+        restarted_store = SQLiteStore(self.database)
+        restarted = ExpertPlanOrchestrator(workers=1, store=restarted_store)
+        loaded = restarted.get_plan(plan["id"])
+        self.assertEqual(loaded["status"], "failed")
+        self.assertEqual(loaded["tasks"]["safety_reviewer"]["status"], "failed")
+        self.assertIn(
+            "interrupted by service restart",
+            loaded["tasks"]["safety_reviewer"]["output"]["error"].lower(),
+        )
+        restarted_store.close()
+
 
 class TemporalKnowledgeTests(unittest.TestCase):
     def setUp(self):
@@ -220,3 +257,49 @@ class TemporalKnowledgeTests(unittest.TestCase):
         self.assertEqual(loaded["tags"], ["history"])
         restarted_store.close()
         self.store = SQLiteStore(":memory:")
+
+    def test_context_packet_selects_newest_records_beyond_first_thousand(self):
+        with self.store.transaction() as connection:
+            connection.executemany(
+                """
+                INSERT INTO knowledge_records
+                    (id, project_id, actor, reason, record_type, content_json,
+                     content_hash, created_at)
+                VALUES (?, ?, 'agent', 'discovery', 'claim', ?, ?, ?)
+                """,
+                [
+                    (
+                        f"kn-{index:04d}",
+                        self.project["id"],
+                        f'{{"index":{index}}}',
+                        f"hash-{index}",
+                        float(index),
+                    )
+                    for index in range(1_001)
+                ],
+            )
+        packet = self.knowledge.context_packet(self.project["id"], limit=1)
+        self.assertEqual(packet["records"][0]["id"], "kn-1000")
+        self.assertTrue(packet["truncated"])
+
+    def test_build_provenance_must_belong_to_record_project(self):
+        other = self.projects.create_project(name="Other", author="bob")
+        with self.store.transaction() as connection:
+            connection.execute(
+                """
+                INSERT INTO builds
+                    (id, project_id, revision, status, created_at,
+                     knowledge_snapshot_hash)
+                VALUES ('build-other', ?, 1, 'running', 1, 'snapshot')
+                """,
+                (other["id"],),
+            )
+        with self.assertRaisesRegex(ValueError, "same project"):
+            self.knowledge.append_record(
+                project_id=self.project["id"],
+                actor="agent",
+                reason="Invalid provenance",
+                record_type="claim",
+                content={"claim": "cross-project"},
+                build_id="build-other",
+            )

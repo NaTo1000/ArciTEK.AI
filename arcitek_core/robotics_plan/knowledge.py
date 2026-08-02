@@ -173,11 +173,21 @@ class KnowledgeRepository:
                     connection, "knowledge_sources", source_id, "source"
                 )
             if build_id is not None:
-                self._require_row(connection, "builds", build_id, "build")
+                build = self._require_row(
+                    connection, "builds", build_id, "build"
+                )
+                if build["project_id"] != project_id:
+                    raise ValidationError(
+                        "build_id must reference the same project"
+                    )
             if agent_run_id is not None:
-                self._require_row(
+                agent_run = self._require_row(
                     connection, "agent_runs", agent_run_id, "agent run"
                 )
+                if agent_run["project_id"] != project_id:
+                    raise ValidationError(
+                        "agent_run_id must reference the same project"
+                    )
 
             record_id = _new_id("kn")
             created_at = time.time()
@@ -383,14 +393,38 @@ class KnowledgeRepository:
     ) -> dict[str, Any]:
         requested_tags = self._validate_tags(tags)
         limit = max(1, min(int(limit), 200))
-        records = self.timeline(project_id, limit=1_000)
+        project_id = validate_identifier(project_id, "project_id")
+        sql = "SELECT DISTINCT kr.* FROM knowledge_records kr"
+        params: list[Any] = []
         if requested_tags:
-            wanted = set(requested_tags)
+            placeholders = ",".join("?" for _ in requested_tags)
+            sql += """
+                JOIN knowledge_record_tags krt ON krt.record_id = kr.id
+                JOIN knowledge_tags kt ON kt.id = krt.tag_id
+            """
+            tag_clause = f" AND kt.name IN ({placeholders})"
+        else:
+            tag_clause = ""
+        sql += (
+            " WHERE kr.project_id = ?"
+            + tag_clause
+            + " ORDER BY kr.created_at DESC, kr.rowid DESC LIMIT ?"
+        )
+        params.append(project_id)
+        params.extend(requested_tags)
+        params.append(limit + 1)
+        with self.store.lock:
+            connection = self.store.connection
+            if connection.execute(
+                "SELECT 1 FROM projects WHERE id = ?", (project_id,)
+            ).fetchone() is None:
+                raise KeyError(f"Unknown project '{project_id}'")
+            rows = connection.execute(sql, params).fetchall()
+            truncated = len(rows) > limit
             records = [
-                record for record in records if wanted.intersection(record["tags"])
+                self._record_from_row(connection, row)
+                for row in reversed(rows[:limit])
             ]
-        truncated = len(records) > limit
-        records = records[-limit:]
         record_ids = {record["id"] for record in records}
         with self.store.lock:
             relationships = [
