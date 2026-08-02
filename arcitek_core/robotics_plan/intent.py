@@ -132,6 +132,9 @@ class IntentAlignmentEngine:
             self._score_candidate(candidate, index, profile, calibration_error)
             for index, candidate in enumerate(candidate_items)
         ]
+        candidate_ids = [candidate["id"] for candidate in scored]
+        if len(candidate_ids) != len(set(candidate_ids)):
+            raise ValidationError("candidate ids must be unique")
         eligible = [candidate for candidate in scored if not candidate["blocked"]]
         ranked = sorted(
             scored,
@@ -142,17 +145,8 @@ class IntentAlignmentEngine:
                 candidate["id"],
             ),
         )
-        selected = (
-            max(
-                eligible,
-                key=lambda candidate: (
-                    candidate["pecs_score"],
-                    -candidate["predicted_error"],
-                    candidate["id"],
-                ),
-            )
-            if eligible
-            else None
+        selected = next(
+            (candidate for candidate in ranked if not candidate["blocked"]), None
         )
         result = {
             "intent_id": profile["id"],
@@ -160,6 +154,7 @@ class IntentAlignmentEngine:
             "calibration_error": calibration_error,
             "selected_candidate_id": selected["id"] if selected else None,
             "status": "candidate_selected" if selected else "blocked",
+            "drift_detected": selected["drift_detected"] if selected else True,
             "requires_human_review": True,
             "candidates": ranked,
         }
@@ -266,7 +261,7 @@ class IntentAlignmentEngine:
             item.get("confidence", 0.5),
             f"candidates[{index}].confidence",
             minimum=0,
-            maximum=1,
+            maximum=0.95,
         )
         predicted_error = validate_number(
             item.get("predicted_error", 0.5),

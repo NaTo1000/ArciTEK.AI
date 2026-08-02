@@ -325,6 +325,21 @@ class RoboticsPlanAPITests(unittest.TestCase):
         )
         self.assertEqual(status, 201)
         self.assertEqual(payload["evaluation"]["selected_candidate_id"], "aligned")
+        evaluation_id = payload["evaluation"]["id"]
+
+        status, payload = request(
+            self.base_url,
+            "POST",
+            f"/api/projects/{project_id}/intent/outcomes",
+            {
+                "actor": "reviewer",
+                "reason": "Record prototype result",
+                "evaluation_id": evaluation_id,
+                "actual_error": 0.2,
+            },
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(payload["outcome"]["content"]["candidate_id"], "aligned")
 
         status, payload = request(
             self.base_url,

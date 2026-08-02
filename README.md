@@ -172,6 +172,13 @@ relying on it for anything safety-critical.
   the rule-based findings above. Results always include
   `verification_required: true` and a bounded confidence — **they are not
   real physics or geometry simulations.**
+- **HIAI + PECS alignment** — immutable human-intent profiles retain goals,
+  success criteria, constraints, custom and built-in guardrails, and explicit
+  scope boundaries. A deterministic predictive-error evaluator ranks
+  structured candidate moves, blocks declared guardrail violations, flags
+  drift, and calibrates later scores from append-only outcome feedback. It is
+  decision support only: candidate evidence still requires verification and
+  the existing human release approval remains mandatory.
 
 ### REST surface
 
@@ -179,7 +186,9 @@ All of the above is reachable under `/api/projects`, `/api/plans`,
 `/api/formats`, `/api/simulations`, and `/api/dashboard` on the existing
 `compute_service.py` server, alongside the original `/api/health`,
 `/api/metrics`, and `/api/jobs` compute endpoints (unchanged). See
-`arcitek_core/compute_service.py` for the full route table.
+`arcitek_core/compute_service.py` for the full route table. Intent alignment is
+available under `/api/projects/{project_id}/intent`; candidate evaluation and
+outcome feedback are exposed under `/intent/evaluate` and `/intent/outcomes`.
 
 ### Environment & secrets policy
 

@@ -81,6 +81,36 @@ Non-loopback deployments require `ARCITEK_API_TOKEN`; authenticated mutations
 use `ARCITEK_API_PRINCIPAL` as their audit identity. Credentials remain in the
 runtime environment and are never persisted.
 
+## HIAI Intent Alignment and PECS
+
+The implemented HIAI layer records each project's human-authored goal, success
+criteria, constraints, guardrails, and out-of-scope boundaries as immutable
+knowledge versions. New intent clarifications supersede rather than rewrite
+older versions. Three built-in controls are always inherited: explicit human
+release approval, no execution of caller-supplied code or commands, and
+preservation of revision and audit history.
+
+The deterministic PECS evaluator ranks structured candidate moves using success
+criteria coverage, bounded confidence, predicted error, and calibration error
+from prior recorded outcomes. Declared constraint or guardrail violations block
+a candidate. Unknown criteria cannot be used to claim coverage, and incomplete
+coverage is surfaced as drift requiring review. Evaluations and outcomes are
+appended to the same temporal knowledge bank so prediction error can calibrate
+later choices without silently changing the intent profile.
+
+PECS is decision support, not an autonomous executor. Candidate evidence is
+caller-supplied and must be verified by a human. Every evaluation reports that
+human review is required, aligned context is included in expert plan output,
+and the existing plan approval gate remains mandatory before release.
+
+The REST surface is:
+
+- `GET|POST /api/projects/{project_id}/intent` for active intent and history.
+- `POST /api/projects/{project_id}/intent/evaluate` to rank candidate moves.
+- `POST /api/projects/{project_id}/intent/outcomes` to record actual error.
+- `POST /api/projects/{project_id}/plans` accepts optional `candidate_moves`;
+  all-blocked move sets are rejected before plan orchestration.
+
 ## TWINBRAIN Contract
 
 TWINBRAIN is a provider-neutral orchestration contract for a later phase; no
