@@ -57,6 +57,9 @@ class IntentAlignmentTests(unittest.TestCase):
         for guardrail in BUILT_IN_GUARDRAILS:
             self.assertIn(guardrail, first["guardrails"])
             self.assertIn(guardrail, second["guardrails"])
+        self.assertIn(
+            "Never bypass the emergency stop", second["custom_guardrails"]
+        )
 
     def test_pecs_selects_highest_aligned_unblocked_move(self):
         self._capture()

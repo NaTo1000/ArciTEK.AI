@@ -63,12 +63,16 @@ class IntentAlignmentEngine:
         criteria = _string_list(success_criteria, "success_criteria")
         if not criteria:
             raise ValidationError("success_criteria must contain at least one item")
-        custom_guardrails = _string_list(guardrails, "guardrails")
+        previous = self.get_active_intent(project_id, required=False)
+        custom_guardrails = (
+            list(previous["custom_guardrails"])
+            if guardrails is None and previous is not None
+            else _string_list(guardrails, "guardrails")
+        )
         effective_guardrails = list(BUILT_IN_GUARDRAILS)
         effective_guardrails.extend(
             item for item in custom_guardrails if item not in effective_guardrails
         )
-        previous = self.get_active_intent(project_id, required=False)
         record = self.knowledge.append_record(
             project_id=project_id,
             actor=actor,
