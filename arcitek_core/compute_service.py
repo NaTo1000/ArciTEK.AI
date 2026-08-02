@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .robotics_plan import (
     ExpertPlanOrchestrator,
+    IntentAlignmentEngine,
     KnowledgeRepository,
     ProjectRepository,
     formats,
@@ -220,6 +221,7 @@ class RoboticsPlanAPI:
         self.store = SQLiteStore(database)
         self.repo = ProjectRepository(store=self.store)
         self.knowledge = KnowledgeRepository(store=self.store)
+        self.intent = IntentAlignmentEngine(self.knowledge)
         self.orchestrator = ExpertPlanOrchestrator(workers=workers, store=self.store)
         self._routes: list[tuple[str, re.Pattern, Any]] = [
             ("GET", re.compile(r"^/api/dashboard$"), self._get_dashboard),
@@ -276,6 +278,30 @@ class RoboticsPlanAPI:
                 "GET",
                 re.compile(rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/knowledge$"),
                 self._get_knowledge,
+            ),
+            (
+                "GET",
+                re.compile(rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/intent$"),
+                self._get_intent,
+            ),
+            (
+                "POST",
+                re.compile(rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/intent$"),
+                self._capture_intent,
+            ),
+            (
+                "POST",
+                re.compile(
+                    rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/intent/evaluate$"
+                ),
+                self._evaluate_intent,
+            ),
+            (
+                "POST",
+                re.compile(
+                    rf"^/api/projects/(?P<project_id>{_ID_SEGMENT})/intent/outcomes$"
+                ),
+                self._record_intent_outcome,
             ),
             (
                 "POST",
@@ -517,6 +543,49 @@ class RoboticsPlanAPI:
         )
         return HTTPStatus.CREATED, {"relationship": relationship}
 
+    # -- HIAI intent / PECS --------------------------------------------------
+    def _get_intent(self, params, query, body):
+        active = self.intent.get_active_intent(
+            params["project_id"], required=False
+        )
+        return HTTPStatus.OK, {
+            "active_intent": active,
+            "history": self.intent.list_intents(params["project_id"]),
+        }
+
+    def _capture_intent(self, params, query, body):
+        profile = self.intent.capture_intent(
+            project_id=params["project_id"],
+            actor=body.get("actor", "anonymous"),
+            reason=body.get("reason"),
+            goal=body.get("goal"),
+            success_criteria=body.get("success_criteria"),
+            constraints=body.get("constraints"),
+            guardrails=body.get("guardrails"),
+            out_of_scope=body.get("out_of_scope"),
+        )
+        return HTTPStatus.CREATED, {"intent": profile}
+
+    def _evaluate_intent(self, params, query, body):
+        evaluation = self.intent.evaluate_moves(
+            project_id=params["project_id"],
+            actor=body.get("actor", "anonymous"),
+            reason=body.get("reason"),
+            candidates=body.get("candidates"),
+        )
+        return HTTPStatus.CREATED, {"evaluation": evaluation}
+
+    def _record_intent_outcome(self, params, query, body):
+        outcome = self.intent.record_outcome(
+            project_id=params["project_id"],
+            actor=body.get("actor", "anonymous"),
+            reason=body.get("reason"),
+            evaluation_id=body.get("evaluation_id"),
+            actual_error=body.get("actual_error"),
+            notes=body.get("notes", ""),
+        )
+        return HTTPStatus.CREATED, {"outcome": outcome}
+
     # -- plans / orchestration ----------------------------------------------
     def _list_plans(self, params, query, body):
         return HTTPStatus.OK, {"plans": self.orchestrator.list_plans(params["project_id"])}
@@ -528,6 +597,29 @@ class RoboticsPlanAPI:
         else:
             current = self.repo.get_project(params["project_id"])["current_revision"]
             snapshot = self.repo.get_revision(params["project_id"], current)
+        active_intent = self.intent.get_active_intent(
+            params["project_id"], required=False
+        )
+        if body.get("candidate_moves") is not None:
+            alignment = self.intent.evaluate_moves(
+                project_id=params["project_id"],
+                actor=body.get("requested_by", "anonymous"),
+                reason=body.get("alignment_reason", "Select the next plan move"),
+                candidates=body.get("candidate_moves"),
+            )
+            if alignment["status"] == "blocked":
+                raise ValidationError(
+                    "All candidate moves violate intent constraints or guardrails"
+                )
+            snapshot["intent_alignment"] = alignment
+        elif active_intent is not None:
+            snapshot["intent_alignment"] = {
+                "intent_id": active_intent["id"],
+                "intent_goal": active_intent["goal"],
+                "status": "human_review_required",
+                "selected_candidate_id": None,
+                "requires_human_review": True,
+            }
         plan = self.orchestrator.create_plan(
             project_id=params["project_id"],
             revision=snapshot["number"],

@@ -75,6 +75,7 @@ def _count_by(items: list[dict[str, Any]], key: str) -> dict[str, int]:
 def _run_systems_architect(snapshot: dict[str, Any]) -> dict[str, Any]:
     requirements = snapshot.get("requirements") or []
     parts = snapshot.get("parts") or []
+    alignment = snapshot.get("intent_alignment")
     return {
         "summary": (
             f"{len(requirements)} requirement(s) and {len(parts)} part(s) "
@@ -83,6 +84,7 @@ def _run_systems_architect(snapshot: dict[str, Any]) -> dict[str, Any]:
         "requirement_count": len(requirements),
         "part_count": len(parts),
         "part_categories": _count_by(parts, "category"),
+        "intent_alignment": alignment,
     }
 
 
@@ -162,16 +164,26 @@ def _run_safety_reviewer(snapshot: dict[str, Any], upstream: dict[str, Any]) -> 
         severity = finding.get("severity", "info")
         severity_counts[severity] = severity_counts.get(severity, 0) + 1
     sim_blocked = upstream.get("simulation_engineer", {}).get("blocked_tools", [])
+    alignment = snapshot.get("intent_alignment") or {}
+    alignment_status = alignment.get("status")
     recommendation = (
         "block_release"
-        if severity_counts.get("critical") or sim_blocked
-        else ("review_required" if severity_counts.get("high") else "no_blocking_issues")
+        if severity_counts.get("critical")
+        or sim_blocked
+        or alignment_status == "blocked"
+        else (
+            "review_required"
+            if severity_counts.get("high")
+            or alignment_status == "human_review_required"
+            else "no_blocking_issues"
+        )
     )
     return {
         "summary": f"{len(findings)} finding(s) reviewed across all disciplines.",
         "severity_counts": severity_counts,
         "recommendation": recommendation,
         "simulation_blocked_tools": sim_blocked,
+        "intent_alignment_status": alignment_status or "not_configured",
         "disclaimer": (
             "Automated review only; does not replace certified human safety "
             "sign-off."

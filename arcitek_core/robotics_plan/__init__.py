@@ -22,13 +22,15 @@ never claim complete or certified accuracy. Any release/final state
 requires an explicit human approval action.
 """
 
-from . import formats, knowledge, orchestrator, repository, rules, simulation
+from . import formats, intent, knowledge, orchestrator, repository, rules, simulation
+from .intent import IntentAlignmentEngine
 from .knowledge import KnowledgeRepository
 from .repository import ProjectRepository
 from .orchestrator import ExpertPlanOrchestrator
 
 __all__ = [
     "formats",
+    "intent",
     "knowledge",
     "orchestrator",
     "repository",
@@ -37,4 +39,5 @@ __all__ = [
     "ProjectRepository",
     "KnowledgeRepository",
     "ExpertPlanOrchestrator",
+    "IntentAlignmentEngine",
 ]

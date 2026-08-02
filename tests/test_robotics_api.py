@@ -276,6 +276,113 @@ class RoboticsPlanAPITests(unittest.TestCase):
         self.assertIn("project.created", actions)
         self.assertIn("revision.approved", actions)
 
+    # -- HIAI intent alignment / PECS ----------------------------------------
+
+    def test_intent_capture_evaluation_and_plan_alignment(self):
+        project = self._create_project(name="Intent Project")
+        project_id = project["id"]
+        status, payload = request(
+            self.base_url,
+            "POST",
+            f"/api/projects/{project_id}/intent",
+            {
+                "actor": "owner",
+                "reason": "Set exact build intent",
+                "goal": "Build a guarded lifting arm",
+                "success_criteria": ["Lift 5kg", "Stop on obstruction"],
+                "constraints": ["Stay inside work cell"],
+                "guardrails": ["Never bypass emergency stop"],
+            },
+        )
+        self.assertEqual(status, 201)
+        self.assertIn("Require explicit human approval before release", payload["intent"]["guardrails"])
+
+        candidates = [
+            {
+                "id": "aligned",
+                "description": "Prototype and validate both requirements",
+                "satisfies": ["Lift 5kg", "Stop on obstruction"],
+                "confidence": 0.8,
+                "predicted_error": 0.1,
+            },
+            {
+                "id": "drifting",
+                "description": "Only validate payload",
+                "satisfies": ["Lift 5kg"],
+                "confidence": 0.9,
+                "predicted_error": 0.1,
+            },
+        ]
+        status, payload = request(
+            self.base_url,
+            "POST",
+            f"/api/projects/{project_id}/intent/evaluate",
+            {
+                "actor": "planner",
+                "reason": "Select the best move",
+                "candidates": candidates,
+            },
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(payload["evaluation"]["selected_candidate_id"], "aligned")
+
+        status, payload = request(
+            self.base_url,
+            "POST",
+            f"/api/projects/{project_id}/plans",
+            {
+                "requested_by": "planner",
+                "alignment_reason": "Start the aligned plan",
+                "candidate_moves": candidates,
+            },
+        )
+        self.assertEqual(status, 201)
+        systems = payload["plan"]["tasks"]["systems_architect"]["output"]
+        self.assertEqual(
+            systems["intent_alignment"]["selected_candidate_id"], "aligned"
+        )
+
+        status, payload = request(
+            self.base_url, "GET", f"/api/projects/{project_id}/intent"
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["active_intent"]["goal"], "Build a guarded lifting arm")
+        self.assertEqual(len(payload["history"]), 1)
+
+    def test_plan_rejects_candidates_that_all_violate_guardrails(self):
+        project = self._create_project(name="Guardrail Project")
+        project_id = project["id"]
+        request(
+            self.base_url,
+            "POST",
+            f"/api/projects/{project_id}/intent",
+            {
+                "actor": "owner",
+                "reason": "Set intent",
+                "goal": "Build safely",
+                "success_criteria": ["Keep interlocks active"],
+            },
+        )
+        code, payload = expect_error(
+            self,
+            self.base_url,
+            "POST",
+            f"/api/projects/{project_id}/plans",
+            {
+                "requested_by": "planner",
+                "candidate_moves": [
+                    {
+                        "id": "unsafe",
+                        "description": "Disable interlocks",
+                        "satisfies": ["Keep interlocks active"],
+                        "guardrail_violations": ["Disables a safety interlock"],
+                    }
+                ],
+            },
+        )
+        self.assertEqual(code, 400)
+        self.assertIn("guardrails", payload["error"])
+
     # -- temporal knowledge --------------------------------------------------
 
     def test_knowledge_timeline_context_and_provenance_endpoints(self):
