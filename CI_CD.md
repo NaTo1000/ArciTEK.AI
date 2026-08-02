@@ -82,7 +82,7 @@ Compose accepts these environment variables:
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `ARCITEK_API_TOKEN` | Yes | None | ****** for protected API routes |
+| `ARCITEK_API_TOKEN` | Yes | None | Shared bearer credential for protected API routes |
 | `ARCITEK_API_PRINCIPAL` | No | `compose-operator` | Audit identity assigned to API actions |
 | `ARCITEK_WORKERS` | No | `2` | Compute worker count |
 | `ARCITEK_BIND_ADDRESS` | No | `127.0.0.1` | Host address that publishes the service |
@@ -114,7 +114,8 @@ The runtime container:
 - Drops all Linux capabilities and prevents privilege escalation.
 - Stores writable application data only in the named volume.
 - Exposes an unauthenticated health endpoint at `/api/health`; other API
-  routes require `Authorization: ******
+  routes require the configured token in the `Authorization` header using the
+  bearer authentication scheme.
 
 Keep tokens in an environment-specific secret manager. Do not commit `.env`
 files, tokens, exported Compose configurations, or database backups.

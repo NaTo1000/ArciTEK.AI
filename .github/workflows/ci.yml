@@ -101,6 +101,8 @@ jobs:
 
       - name: Stop Compose service
         if: always()
+        env:
+          ARCITEK_API_TOKEN: ci-only-token
         run: docker compose down --volumes
 
   publish:
