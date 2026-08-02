@@ -15,13 +15,16 @@ never set automatically.
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any
 
 from . import simulation
+from .storage import SQLiteStore
 from .validation import ValidationError, validate_dict, validate_string
 
 MAX_PLANS = 500
@@ -190,14 +193,23 @@ _ROLE_RUNNERS = {
 class ExpertPlanOrchestrator:
     """Builds and executes the fixed expert-role DAG for a project revision."""
 
-    def __init__(self, workers: int = 4) -> None:
+    def __init__(
+        self,
+        workers: int = 4,
+        *,
+        store: SQLiteStore | None = None,
+        database: str | Path | None = None,
+    ) -> None:
         self._lock = threading.RLock()
         self._plans: dict[str, dict[str, Any]] = {}
         self._activity: list[dict[str, Any]] = []
+        self.store = store or (SQLiteStore(database) if database is not None else None)
         workers = max(1, min(workers, 16))
         self._executor = ThreadPoolExecutor(
             max_workers=workers, thread_name_prefix="arcitek-expert"
         )
+        if self.store is not None:
+            self._load_persisted_state()
 
     def _log(self, plan_id: str, action: str, details: dict[str, Any]) -> None:
         entry = {
@@ -210,6 +222,152 @@ class ExpertPlanOrchestrator:
         self._activity.append(entry)
         if len(self._activity) > 5_000:
             del self._activity[: len(self._activity) - 5_000]
+        if self.store is not None:
+            with self.store.transaction() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO plan_activity
+                        (id, plan_id, timestamp, action, details_json)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        entry["id"],
+                        plan_id,
+                        entry["timestamp"],
+                        action,
+                        _json_dump(details),
+                    ),
+                )
+
+    def _load_persisted_state(self) -> None:
+        with self.store.lock:
+            connection = self.store.connection
+            plan_rows = connection.execute(
+                "SELECT * FROM plans ORDER BY created_at"
+            ).fetchall()
+            for row in plan_rows:
+                task_rows = connection.execute(
+                    "SELECT * FROM plan_tasks WHERE plan_id = ? ORDER BY rowid",
+                    (row["id"],),
+                ).fetchall()
+                approval_rows = connection.execute(
+                    """
+                    SELECT id, approver, decision, comment, timestamp
+                    FROM plan_approvals WHERE plan_id = ?
+                    ORDER BY timestamp, rowid
+                    """,
+                    (row["id"],),
+                ).fetchall()
+                self._plans[row["id"]] = {
+                    "id": row["id"],
+                    "project_id": row["project_id"],
+                    "revision": row["revision"],
+                    "requested_by": row["requested_by"],
+                    "created_at": row["created_at"],
+                    "status": row["status"],
+                    "tasks": {
+                        task["role"]: {
+                            "id": task["task_id"],
+                            "role": task["role"],
+                            "title": task["title"],
+                            "depends_on": json.loads(task["depends_on_json"]),
+                            "status": task["status"],
+                            "output": (
+                                json.loads(task["output_json"])
+                                if task["output_json"] is not None
+                                else None
+                            ),
+                            "started_at": task["started_at"],
+                            "completed_at": task["completed_at"],
+                        }
+                        for task in task_rows
+                    },
+                    "approvals": [dict(approval) for approval in approval_rows],
+                }
+            activity_rows = connection.execute(
+                """
+                SELECT id, plan_id, timestamp, action, details_json
+                FROM plan_activity ORDER BY timestamp, rowid
+                """
+            ).fetchall()
+        self._activity = [
+            {
+                "id": row["id"],
+                "plan_id": row["plan_id"],
+                "timestamp": row["timestamp"],
+                "action": row["action"],
+                "details": json.loads(row["details_json"]),
+            }
+            for row in activity_rows[-5_000:]
+        ]
+
+    def _persist_new_plan(self, plan: dict[str, Any]) -> None:
+        if self.store is None:
+            return
+        with self.store.transaction() as connection:
+            connection.execute(
+                """
+                INSERT INTO plans
+                    (id, project_id, revision, requested_by, created_at, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    plan["id"],
+                    plan["project_id"],
+                    plan["revision"],
+                    plan["requested_by"],
+                    plan["created_at"],
+                    plan["status"],
+                ),
+            )
+            connection.executemany(
+                """
+                INSERT INTO plan_tasks
+                    (plan_id, role, task_id, title, depends_on_json, status,
+                     output_json, started_at, completed_at)
+                VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+                """,
+                [
+                    (
+                        plan["id"],
+                        task["role"],
+                        task["id"],
+                        task["title"],
+                        _json_dump(task["depends_on"]),
+                        task["status"],
+                    )
+                    for task in plan["tasks"].values()
+                ],
+            )
+
+    def _persist_task(self, plan_id: str, task: dict[str, Any]) -> None:
+        if self.store is None:
+            return
+        output = None if task["output"] is None else _json_dump(task["output"])
+        with self.store.transaction() as connection:
+            connection.execute(
+                """
+                UPDATE plan_tasks
+                SET status = ?, output_json = ?, started_at = ?, completed_at = ?
+                WHERE plan_id = ? AND role = ?
+                """,
+                (
+                    task["status"],
+                    output,
+                    task["started_at"],
+                    task["completed_at"],
+                    plan_id,
+                    task["role"],
+                ),
+            )
+
+    def _persist_plan_status(self, plan_id: str, status: str) -> None:
+        if self.store is None:
+            return
+        with self.store.transaction() as connection:
+            connection.execute(
+                "UPDATE plans SET status = ? WHERE id = ?", (status, plan_id)
+            )
 
     def create_plan(
         self,
@@ -251,6 +409,7 @@ class ExpertPlanOrchestrator:
                 "approvals": [],
             }
             self._plans[plan_id] = plan
+            self._persist_new_plan(plan)
             self._log(plan_id, "plan.created", {"project_id": project_id, "revision": revision})
 
         self._execute(plan_id, snapshot)
@@ -272,6 +431,7 @@ class ExpertPlanOrchestrator:
                 # construction, so this should be unreachable.
                 with self._lock:
                     self._plans[plan_id]["status"] = "failed"
+                    self._persist_plan_status(plan_id, "failed")
                 self._log(plan_id, "plan.failed", {"reason": "dependency cycle detected"})
                 return
 
@@ -279,6 +439,7 @@ class ExpertPlanOrchestrator:
                 for role in ready:
                     self._plans[plan_id]["tasks"][role]["status"] = "running"
                     self._plans[plan_id]["tasks"][role]["started_at"] = time.time()
+                    self._persist_task(plan_id, self._plans[plan_id]["tasks"][role])
             self._log(plan_id, "tasks.started", {"roles": ready})
 
             futures = {
@@ -298,6 +459,7 @@ class ExpertPlanOrchestrator:
                     task["status"] = status
                     task["output"] = output
                     task["completed_at"] = time.time()
+                    self._persist_task(plan_id, task)
                 self._log(plan_id, f"task.{status}", {"role": role})
                 completed.add(role)
                 remaining.discard(role)
@@ -306,6 +468,7 @@ class ExpertPlanOrchestrator:
             plan = self._plans[plan_id]
             any_failed = any(t["status"] == "failed" for t in plan["tasks"].values())
             plan["status"] = "failed" if any_failed else "completed"
+            self._persist_plan_status(plan_id, plan["status"])
         self._log(plan_id, "plan.completed", {"status": self._plans[plan_id]["status"]})
 
     def get_plan(self, plan_id: str) -> dict[str, Any]:
@@ -350,6 +513,27 @@ class ExpertPlanOrchestrator:
             }
             plan["approvals"].append(event)
             plan["status"] = "released" if decision == "approved" else "rejected"
+            if self.store is not None:
+                with self.store.transaction() as connection:
+                    connection.execute(
+                        """
+                        INSERT INTO plan_approvals
+                            (id, plan_id, approver, decision, comment, timestamp)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            event["id"],
+                            plan_id,
+                            approver,
+                            decision,
+                            comment,
+                            event["timestamp"],
+                        ),
+                    )
+                    connection.execute(
+                        "UPDATE plans SET status = ? WHERE id = ?",
+                        (plan["status"], plan_id),
+                    )
         self._log(plan_id, f"plan.{decision}", {"approver": approver})
         return self.get_plan(plan_id)
 
@@ -372,3 +556,7 @@ def _deep_copy(value: Any) -> Any:
     if isinstance(value, set):
         return sorted(value)
     return value
+
+
+def _json_dump(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

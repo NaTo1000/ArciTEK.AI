@@ -16,13 +16,16 @@ Design invariants:
 
 from __future__ import annotations
 
-import copy
-import threading
+import hashlib
+import json
+import sqlite3
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 from . import rules
+from .storage import SQLiteStore
 from .validation import (
     MAX_LIST_ITEMS,
     MAX_NAME_LENGTH,
@@ -264,36 +267,66 @@ def sanitize_revision_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class ProjectRepository:
-    """In-memory, thread-safe store for projects and their revision history."""
+    """SQLite-backed project store preserving immutable revision history."""
 
-    def __init__(self) -> None:
-        self._lock = threading.RLock()
-        self._projects: dict[str, dict[str, Any]] = {}
-        self._events: list[dict[str, Any]] = []
+    def __init__(
+        self,
+        database: str | Path = ":memory:",
+        *,
+        store: SQLiteStore | None = None,
+    ) -> None:
+        self.store = store or SQLiteStore(database)
 
     # -- audit -----------------------------------------------------------
-    def _record_event(self, project_id: str, actor: str, action: str, details: dict[str, Any]) -> None:
-        event = {
-            "id": _new_id("evt"),
-            "timestamp": time.time(),
-            "project_id": project_id,
-            "actor": actor,
-            "action": action,
-            "details": details,
-        }
-        self._events.append(event)
-        if len(self._events) > 10_000:
-            del self._events[: len(self._events) - 10_000]
+    @staticmethod
+    def _record_event(
+        connection: sqlite3.Connection,
+        project_id: str,
+        actor: str,
+        action: str,
+        details: dict[str, Any],
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO audit_events
+                (id, timestamp, project_id, actor, action, details_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                _new_id("evt"),
+                time.time(),
+                project_id,
+                actor,
+                action,
+                _json_dump(details),
+            ),
+        )
 
     def list_events(self, project_id: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
-        with self._lock:
-            events = [
-                copy.deepcopy(event)
-                for event in self._events
-                if project_id is None or event["project_id"] == project_id
-            ]
-        events.sort(key=lambda event: event["timestamp"], reverse=True)
-        return events[: max(1, min(limit, 1000))]
+        bounded_limit = max(1, min(limit, 1000))
+        sql = """
+            SELECT id, timestamp, project_id, actor, action, details_json
+            FROM audit_events
+        """
+        params: list[Any] = []
+        if project_id is not None:
+            sql += " WHERE project_id = ?"
+            params.append(project_id)
+        sql += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(bounded_limit)
+        with self.store.lock:
+            rows = self.store.connection.execute(sql, params).fetchall()
+        return [
+            {
+                "id": row["id"],
+                "timestamp": row["timestamp"],
+                "project_id": row["project_id"],
+                "actor": row["actor"],
+                "action": row["action"],
+                "details": json.loads(row["details_json"]),
+            }
+            for row in rows
+        ]
 
     # -- projects ----------------------------------------------------------
     def create_project(
@@ -323,8 +356,9 @@ class ProjectRepository:
             }
         )
 
-        with self._lock:
-            if len(self._projects) >= MAX_PROJECTS:
+        with self.store.transaction() as connection:
+            count = connection.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+            if count >= MAX_PROJECTS:
                 raise ValidationError("Project capacity reached")
             project_id = _new_id("proj")
             revision = self._build_revision(
@@ -334,19 +368,22 @@ class ProjectRepository:
                 message="Initial revision",
                 content=content,
             )
-            project = {
-                "id": project_id,
-                "name": name,
-                "description": description,
-                "created_at": time.time(),
-                "revisions": {1: revision},
-                "current_revision": 1,
-                "approvals": {},  # revision_number -> list[approval event]
-                "domain": "robotics",
-            }
-            self._projects[project_id] = project
+            created_at = time.time()
+            connection.execute(
+                """
+                INSERT INTO projects
+                    (id, name, description, created_at, current_revision, domain)
+                VALUES (?, ?, ?, ?, 1, 'robotics')
+                """,
+                (project_id, name, description, created_at),
+            )
+            self._insert_revision(connection, project_id, revision)
             self._record_event(
-                project_id, author, "project.created", {"name": name, "revision": 1}
+                connection,
+                project_id,
+                author,
+                "project.created",
+                {"name": name, "revision": 1},
             )
         return self._project_view(project_id)
 
@@ -374,39 +411,94 @@ class ProjectRepository:
             "findings": findings,
         }
 
-    def _get_project_locked(self, project_id: str) -> dict[str, Any]:
-        project = self._projects.get(project_id)
-        if project is None:
+    @staticmethod
+    def _insert_revision(
+        connection: sqlite3.Connection,
+        project_id: str,
+        revision: dict[str, Any],
+    ) -> None:
+        content = {
+            key: revision[key]
+            for key in ("requirements", "parts", "wiring", "hydraulics", "pcb", "findings")
+        }
+        serialized = _json_dump(content)
+        connection.execute(
+            """
+            INSERT INTO revisions
+                (project_id, number, parent, created_at, author, message,
+                 content_json, content_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                project_id,
+                revision["number"],
+                revision["parent"],
+                revision["created_at"],
+                revision["author"],
+                revision["message"],
+                serialized,
+                hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
+            ),
+        )
+
+    @staticmethod
+    def _project_from_row(row: sqlite3.Row | None, project_id: str) -> dict[str, Any]:
+        if row is None:
             raise KeyError(f"Unknown project '{project_id}'")
-        return project
+        return dict(row)
 
     def get_project(self, project_id: str) -> dict[str, Any]:
-        with self._lock:
-            self._get_project_locked(project_id)
         return self._project_view(project_id)
 
     def list_projects(self) -> list[dict[str, Any]]:
-        with self._lock:
-            ids = list(self._projects.keys())
+        with self.store.lock:
+            ids = [
+                row["id"]
+                for row in self.store.connection.execute(
+                    "SELECT id FROM projects ORDER BY created_at"
+                ).fetchall()
+            ]
         return [self._project_view(pid) for pid in ids]
 
     def _project_view(self, project_id: str) -> dict[str, Any]:
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            current = project["revisions"][project["current_revision"]]
-            approvals = project["approvals"].get(project["current_revision"], [])
-            latest_approval = approvals[-1] if approvals else None
-            return {
-                "id": project["id"],
-                "name": project["name"],
-                "description": project["description"],
-                "created_at": project["created_at"],
-                "current_revision": project["current_revision"],
-                "revision_count": len(project["revisions"]),
-                "findings_summary": _summarize_findings(current["findings"]),
-                "approval_status": (latest_approval or {}).get("decision", "pending"),
-                "domain": project["domain"],
-            }
+        with self.store.lock:
+            connection = self.store.connection
+            project = self._project_from_row(
+                connection.execute(
+                    "SELECT * FROM projects WHERE id = ?", (project_id,)
+                ).fetchone(),
+                project_id,
+            )
+            revision_row = connection.execute(
+                """
+                SELECT content_json FROM revisions
+                WHERE project_id = ? AND number = ?
+                """,
+                (project_id, project["current_revision"]),
+            ).fetchone()
+            revision_count = connection.execute(
+                "SELECT COUNT(*) FROM revisions WHERE project_id = ?", (project_id,)
+            ).fetchone()[0]
+            approval = connection.execute(
+                """
+                SELECT decision FROM revision_approvals
+                WHERE project_id = ? AND revision = ?
+                ORDER BY timestamp DESC, rowid DESC LIMIT 1
+                """,
+                (project_id, project["current_revision"]),
+            ).fetchone()
+        content = json.loads(revision_row["content_json"])
+        return {
+            "id": project["id"],
+            "name": project["name"],
+            "description": project["description"],
+            "created_at": project["created_at"],
+            "current_revision": project["current_revision"],
+            "revision_count": revision_count,
+            "findings_summary": _summarize_findings(content["findings"]),
+            "approval_status": approval["decision"] if approval else "pending",
+            "domain": project["domain"],
+        }
 
     # -- revisions -----------------------------------------------------
     def create_revision(
@@ -426,14 +518,29 @@ class ProjectRepository:
         message = validate_string(
             message, "message", max_len=MAX_TEXT_LENGTH, allow_empty=True, default=""
         )
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            if len(project["revisions"]) >= MAX_REVISIONS_PER_PROJECT:
+        with self.store.transaction() as connection:
+            project = self._project_from_row(
+                connection.execute(
+                    "SELECT * FROM projects WHERE id = ?", (project_id,)
+                ).fetchone(),
+                project_id,
+            )
+            revision_count = connection.execute(
+                "SELECT COUNT(*) FROM revisions WHERE project_id = ?", (project_id,)
+            ).fetchone()[0]
+            if revision_count >= MAX_REVISIONS_PER_PROJECT:
                 raise ValidationError("Revision capacity reached for this project")
             base_number = base_revision or project["current_revision"]
-            base = project["revisions"].get(base_number)
-            if base is None:
+            base_row = connection.execute(
+                """
+                SELECT * FROM revisions
+                WHERE project_id = ? AND number = ?
+                """,
+                (project_id, base_number),
+            ).fetchone()
+            if base_row is None:
                 raise ValidationError(f"Unknown base revision {base_number}")
+            base = self._revision_from_row(base_row)
 
             # Start from the base revision's content; only override fields the
             # caller explicitly supplied so unspecified sections carry over
@@ -446,7 +553,10 @@ class ProjectRepository:
                 "pcb": pcb if pcb is not None else base["pcb"],
             }
             content = sanitize_revision_payload(merged)
-            next_number = max(project["revisions"]) + 1
+            next_number = connection.execute(
+                "SELECT COALESCE(MAX(number), 0) + 1 FROM revisions WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()[0]
             revision = self._build_revision(
                 number=next_number,
                 parent=base_number,
@@ -454,9 +564,13 @@ class ProjectRepository:
                 message=message or f"Revision {next_number}",
                 content=content,
             )
-            project["revisions"][next_number] = revision
-            project["current_revision"] = next_number
+            self._insert_revision(connection, project_id, revision)
+            connection.execute(
+                "UPDATE projects SET current_revision = ? WHERE id = ?",
+                (next_number, project_id),
+            )
             self._record_event(
+                connection,
                 project_id,
                 author,
                 "revision.created",
@@ -465,21 +579,58 @@ class ProjectRepository:
         return self.get_revision(project_id, next_number)
 
     def get_revision(self, project_id: str, revision_number: int) -> dict[str, Any]:
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            revision = project["revisions"].get(revision_number)
-            if revision is None:
+        with self.store.lock:
+            connection = self.store.connection
+            if connection.execute(
+                "SELECT 1 FROM projects WHERE id = ?", (project_id,)
+            ).fetchone() is None:
+                raise KeyError(f"Unknown project '{project_id}'")
+            row = connection.execute(
+                """
+                SELECT * FROM revisions
+                WHERE project_id = ? AND number = ?
+                """,
+                (project_id, revision_number),
+            ).fetchone()
+            if row is None:
                 raise KeyError(f"Unknown revision {revision_number}")
-            approvals = project["approvals"].get(revision_number, [])
-            view = copy.deepcopy(revision)
-            view["approvals"] = copy.deepcopy(approvals)
-            view["approval_status"] = (approvals[-1]["decision"] if approvals else "pending")
+            approvals = self._approval_rows(
+                connection, project_id, revision_number
+            )
+        view = self._revision_from_row(row)
+        view["approvals"] = approvals
+        view["approval_status"] = approvals[-1]["decision"] if approvals else "pending"
         return view
 
+    @staticmethod
+    def _revision_from_row(row: sqlite3.Row) -> dict[str, Any]:
+        content = json.loads(row["content_json"])
+        return {
+            "number": row["number"],
+            "parent": row["parent"],
+            "created_at": row["created_at"],
+            "author": row["author"],
+            "message": row["message"],
+            **content,
+        }
+
     def list_revisions(self, project_id: str) -> list[dict[str, Any]]:
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            numbers = sorted(project["revisions"].keys())
+        with self.store.lock:
+            connection = self.store.connection
+            if connection.execute(
+                "SELECT 1 FROM projects WHERE id = ?", (project_id,)
+            ).fetchone() is None:
+                raise KeyError(f"Unknown project '{project_id}'")
+            numbers = [
+                row["number"]
+                for row in connection.execute(
+                    """
+                    SELECT number FROM revisions
+                    WHERE project_id = ? ORDER BY number
+                    """,
+                    (project_id,),
+                ).fetchall()
+            ]
         return [self.get_revision(project_id, number) for number in numbers]
 
     def rollback(self, project_id: str, target_revision: int, *, author: str, message: str = "") -> dict[str, Any]:
@@ -490,21 +641,23 @@ class ProjectRepository:
         content.
         """
 
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            target = project["revisions"].get(target_revision)
-            if target is None:
-                raise ValidationError(f"Unknown target revision {target_revision}")
+        try:
+            target = self.get_revision(project_id, target_revision)
+            current_revision = self.get_project(project_id)["current_revision"]
+        except KeyError as exc:
+            if "revision" in str(exc):
+                raise ValidationError(f"Unknown target revision {target_revision}") from exc
+            raise
         return self.create_revision(
             project_id,
             author=author,
             message=message or f"Rollback to revision {target_revision}",
-            requirements=copy.deepcopy(target["requirements"]),
-            parts=copy.deepcopy(target["parts"]),
-            wiring=copy.deepcopy(target["wiring"]),
-            hydraulics=copy.deepcopy(target["hydraulics"]),
-            pcb=copy.deepcopy(target["pcb"]),
-            base_revision=project["current_revision"],
+            requirements=target["requirements"],
+            parts=target["parts"],
+            wiring=target["wiring"],
+            hydraulics=target["hydraulics"],
+            pcb=target["pcb"],
+            base_revision=current_revision,
         )
 
     # -- approvals -------------------------------------------------------
@@ -523,9 +676,18 @@ class ProjectRepository:
         )
         if decision not in ("approved", "rejected"):
             raise ValidationError("decision must be 'approved' or 'rejected'")
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            if revision_number not in project["revisions"]:
+        with self.store.transaction() as connection:
+            if connection.execute(
+                "SELECT 1 FROM projects WHERE id = ?", (project_id,)
+            ).fetchone() is None:
+                raise KeyError(f"Unknown project '{project_id}'")
+            if connection.execute(
+                """
+                SELECT 1 FROM revisions
+                WHERE project_id = ? AND number = ?
+                """,
+                (project_id, revision_number),
+            ).fetchone() is None:
                 raise ValidationError(f"Unknown revision {revision_number}")
             event = {
                 "id": _new_id("appr"),
@@ -535,8 +697,24 @@ class ProjectRepository:
                 "comment": comment,
                 "timestamp": time.time(),
             }
-            project["approvals"].setdefault(revision_number, []).append(event)
+            connection.execute(
+                """
+                INSERT INTO revision_approvals
+                    (id, project_id, revision, approver, decision, comment, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event["id"],
+                    project_id,
+                    revision_number,
+                    approver,
+                    decision,
+                    comment,
+                    event["timestamp"],
+                ),
+            )
             self._record_event(
+                connection,
                 project_id,
                 approver,
                 f"revision.{decision}",
@@ -545,24 +723,39 @@ class ProjectRepository:
         return self.get_revision(project_id, revision_number)
 
     def list_approvals(self, project_id: str, revision_number: int | None = None) -> list[dict[str, Any]]:
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            if revision_number is not None:
-                return copy.deepcopy(project["approvals"].get(revision_number, []))
-            merged: list[dict[str, Any]] = []
-            for events in project["approvals"].values():
-                merged.extend(events)
-            return copy.deepcopy(sorted(merged, key=lambda e: e["timestamp"]))
+        with self.store.lock:
+            connection = self.store.connection
+            if connection.execute(
+                "SELECT 1 FROM projects WHERE id = ?", (project_id,)
+            ).fetchone() is None:
+                raise KeyError(f"Unknown project '{project_id}'")
+            return self._approval_rows(connection, project_id, revision_number)
+
+    @staticmethod
+    def _approval_rows(
+        connection: sqlite3.Connection,
+        project_id: str,
+        revision_number: int | None,
+    ) -> list[dict[str, Any]]:
+        sql = """
+            SELECT id, revision, approver, decision, comment, timestamp
+            FROM revision_approvals WHERE project_id = ?
+        """
+        params: list[Any] = [project_id]
+        if revision_number is not None:
+            sql += " AND revision = ?"
+            params.append(revision_number)
+        sql += " ORDER BY timestamp, rowid"
+        return [dict(row) for row in connection.execute(sql, params).fetchall()]
 
     # -- findings ---------------------------------------------------------
     def get_findings(self, project_id: str, revision_number: int | None = None) -> list[dict[str, Any]]:
-        with self._lock:
-            project = self._get_project_locked(project_id)
-            number = revision_number or project["current_revision"]
-            revision = project["revisions"].get(number)
-            if revision is None:
-                raise ValidationError(f"Unknown revision {number}")
-            return copy.deepcopy(revision["findings"])
+        if revision_number is None:
+            revision_number = self.get_project(project_id)["current_revision"]
+        try:
+            return self.get_revision(project_id, revision_number)["findings"]
+        except KeyError as exc:
+            raise ValidationError(f"Unknown revision {revision_number}") from exc
 
 
 def _summarize_findings(findings: list[dict[str, Any]]) -> dict[str, int]:
@@ -572,3 +765,7 @@ def _summarize_findings(findings: list[dict[str, Any]]) -> dict[str, int]:
         summary[severity] = summary.get(severity, 0) + 1
     summary["total"] = len(findings)
     return summary
+
+
+def _json_dump(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

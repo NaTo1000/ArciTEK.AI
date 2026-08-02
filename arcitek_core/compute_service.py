@@ -20,6 +20,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from .robotics_plan import ExpertPlanOrchestrator, ProjectRepository, formats, simulation
+from .robotics_plan.storage import SQLiteStore
 from .robotics_plan.validation import ValidationError
 
 
@@ -208,9 +209,10 @@ class RoboticsPlanAPI:
     structured data produced by :mod:`arcitek_core.robotics_plan`.
     """
 
-    def __init__(self, workers: int = 4) -> None:
-        self.repo = ProjectRepository()
-        self.orchestrator = ExpertPlanOrchestrator(workers=workers)
+    def __init__(self, workers: int = 4, database: str | Path = ":memory:") -> None:
+        self.store = SQLiteStore(database)
+        self.repo = ProjectRepository(store=self.store)
+        self.orchestrator = ExpertPlanOrchestrator(workers=workers, store=self.store)
         self._routes: list[tuple[str, re.Pattern, Any]] = [
             ("GET", re.compile(r"^/api/dashboard$"), self._get_dashboard),
             ("GET", re.compile(r"^/api/projects$"), self._list_projects),
@@ -586,13 +588,30 @@ class ComputeRequestHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def create_server(host: str, port: int, workers: int) -> ThreadingHTTPServer:
+class ArciTEKHTTPServer(ThreadingHTTPServer):
+    """HTTP server that closes the shared persistence store on shutdown."""
+
+    store: SQLiteStore
+
+    def server_close(self) -> None:
+        super().server_close()
+        self.store.close()
+
+
+def create_server(
+    host: str,
+    port: int,
+    workers: int,
+    database: str | Path = ":memory:",
+) -> ThreadingHTTPServer:
     queue = ComputeQueue(workers)
-    robotics = RoboticsPlanAPI(workers=workers)
+    robotics = RoboticsPlanAPI(workers=workers, database=database)
     handler = type(
         "ArciTEKHandler", (ComputeRequestHandler,), {"queue": queue, "robotics": robotics}
     )
-    return ThreadingHTTPServer((host, port), handler)
+    server = ArciTEKHTTPServer((host, port), handler)
+    server.store = robotics.store
+    return server
 
 
 def main() -> None:
@@ -604,8 +623,13 @@ def main() -> None:
     parser.add_argument(
         "--workers", type=int, default=int(os.getenv("ARCITEK_WORKERS", "2"))
     )
+    parser.add_argument(
+        "--database",
+        default=os.getenv("ARCITEK_DATABASE", "data/arcitek.db"),
+        help="SQLite database path (default: data/arcitek.db)",
+    )
     args = parser.parse_args()
-    server = create_server(args.host, args.port, args.workers)
+    server = create_server(args.host, args.port, args.workers, args.database)
     print(f"ArciTEK Compute listening on http://{args.host}:{args.port}")
     try:
         server.serve_forever()
