@@ -125,7 +125,67 @@ ArciTEK.AI/
 └── tests/                 # Test suites
 ```
 
-## 🏆 Performance Metrics
+## 🤖 Engineering Robotics-Plan MVP
+
+`arcitek_core/compute_service.py` also exposes an early, stdlib-only
+**robotics engineering control plane** (see `arcitek_core/robotics_plan/`
+and the "Engineering" tab in the web dashboard). It is a real, working MVP
+with an explicit, honest scope — please read the limitations below before
+relying on it for anything safety-critical.
+
+### What it actually does
+
+- **Project & revision repository** — thread-safe, in-memory storage of
+  projects and *immutable*, numbered revisions (requirements, parts,
+  wiring, hydraulics, PCB data, findings). Rollback never rewrites
+  history: it always appends a brand-new revision with the target
+  content. Every mutation is recorded in an append-only audit log, and
+  release/approval status is tracked as a separate append-only decision
+  log tied to a specific revision number — a human must explicitly
+  approve before a revision or plan is considered released.
+- **Expert task orchestrator** — a fixed, dependency-aware DAG of expert
+  roles (systems architect → mechanical/electrical/hydraulics/PCB →
+  simulation → safety review) executed in parallel with a
+  `ThreadPoolExecutor`. It only produces **structured, deterministic
+  Python data** — there is no `eval`/`exec`/subprocess execution and no
+  call to any external AI service. Plan release also requires explicit
+  human approval.
+- **Neutral format registry** (STEP, STL, DXF, URDF, Gerber, IPC-2581,
+  netlist) — validates file extensions and declared metadata and returns
+  a safe import/export manifest. **It does not parse or convert real
+  CAD/EDA geometry.**
+- **Rule-based flaw detection** — coarse, axis-aligned bounding-box
+  clearance/collision checks, simple wiring connectivity/ampacity/voltage-
+  drop checks, and hydraulic pressure/flow/velocity checks. Every finding
+  carries a `severity`, `rule`, `message`, `evidence`, a bounded
+  `confidence` (capped below 1.0), and a `tolerance` description. **These
+  are heuristic checks against supplied metadata only — never a claim of
+  100% accuracy or a substitute for certified engineering analysis.**
+- **Simulation adapters** (FreeCAD, KiCad, ROS 2/Gazebo) — return a
+  read-only capability/availability manifest (via `shutil.which`, never
+  executing the tool) and a deterministic "dry run" that cross-references
+  the rule-based findings above. Results always include
+  `verification_required: true` and a bounded confidence — **they are not
+  real physics or geometry simulations.**
+
+### REST surface
+
+All of the above is reachable under `/api/projects`, `/api/plans`,
+`/api/formats`, `/api/simulations`, and `/api/dashboard` on the existing
+`compute_service.py` server, alongside the original `/api/health`,
+`/api/metrics`, and `/api/jobs` compute endpoints (unchanged). See
+`arcitek_core/compute_service.py` for the full route table.
+
+### Environment & secrets policy
+
+This MVP needs **no external credentials or API keys** — it is 100%
+Python standard library, runs fully offline, and never calls an external
+AI service or executes a subprocess. If you deploy the broader ArciTEK.AI
+platform features that do use third-party providers, follow the existing
+convention: put secrets only in a local, gitignored `.env` file (see
+`DEPLOYMENT.md`) and never commit credentials to source control.
+
+
 
 - **Total Quantum Boost**: +2,135.5%
 - **AI Model Integration**: 8+ specialized models

@@ -32,6 +32,9 @@
           <a class="nav-item" href="#activity">
             <span class="nav-icon">↗</span> Activity
           </a>
+          <a class="nav-item" href="#engineering">
+            <span class="nav-icon">⚙</span> Engineering
+          </a>
         </nav>
         <div class="sidebar-bottom">
           <div class="plan-card">
@@ -158,9 +161,113 @@
               </button>
             </div>
           </section>
+
+          <section class="quick-actions" id="engineering">
+            <div class="section-title">
+              <h2>Engineering control plane</h2>
+              <p>Robotics project revisions, rule-based findings, and expert plans — release always requires human approval</p>
+            </div>
+
+            <div class="panel-head eng-toolbar">
+              <div><h2>Robotics projects</h2><p>Create a project, then select it to work with revisions and plans</p></div>
+              <div class="eng-toolbar-actions">
+                <button class="text-button" id="refresh-engineering" type="button">Refresh ↻</button>
+                <button class="primary-button" id="open-project" type="button"><span>＋</span> New project</button>
+              </div>
+            </div>
+
+            <div class="workspace-grid">
+              <article class="panel">
+                <div class="panel-head">
+                  <div><h2>Projects</h2><p>Select a project to load its current revision</p></div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Project</th><th>Revision</th><th>Approval</th><th>Findings</th></tr></thead>
+                    <tbody id="projects-table"><tr class="empty-row"><td colspan="4">No projects yet. Create one to begin.</td></tr></tbody>
+                  </table>
+                </div>
+              </article>
+              <article class="panel infrastructure">
+                <div class="panel-head">
+                  <div><h2>Plan metrics</h2><p>Live orchestration summary</p></div>
+                </div>
+                <div class="server-info">
+                  <div><span>Projects</span><strong id="eng-project-count">--</strong></div>
+                  <div><span>Plans</span><strong id="eng-plan-count">--</strong></div>
+                  <div><span>Released</span><strong id="eng-plan-released">--</strong></div>
+                </div>
+                <div class="server-info">
+                  <div><span>Awaiting approval</span><strong id="eng-plan-pending">--</strong></div>
+                  <div><span>Critical findings</span><strong id="eng-critical-count">--</strong></div>
+                  <div><span>Selected project</span><strong id="eng-selected-project">none</strong></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="workspace-grid eng-gap-top">
+              <article class="panel">
+                <div class="panel-head">
+                  <div><h2>Findings</h2><p>Rule-based clearance, wiring, and hydraulics checks for the selected revision</p></div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Severity</th><th>Rule</th><th>Message</th><th>Confidence</th></tr></thead>
+                    <tbody id="findings-table"><tr class="empty-row"><td colspan="4">Select a project to view findings.</td></tr></tbody>
+                  </table>
+                </div>
+              </article>
+              <article class="panel infrastructure">
+                <div class="panel-head">
+                  <div><h2>Expert agent activity</h2><p>Dependency-aware orchestration log</p></div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Action</th><th>When</th></tr></thead>
+                    <tbody id="activity-table"><tr class="empty-row"><td colspan="2">No plan activity yet.</td></tr></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+
+            <div class="action-grid eng-gap-top">
+              <button class="action-card" id="create-plan-btn" type="button">
+                <span class="action-icon cyan">▶</span><div><strong>Generate expert plan</strong><small>Dependency-aware orchestration</small></div><b>→</b>
+              </button>
+              <button class="action-card" id="approve-revision-btn" type="button">
+                <span class="action-icon purple-bg">✓</span><div><strong>Approve current revision</strong><small>Human approval required</small></div><b>→</b>
+              </button>
+              <button class="action-card" id="approve-plan-btn" type="button">
+                <span class="action-icon gold">☑</span><div><strong>Approve latest plan</strong><small>Release gate</small></div><b>→</b>
+              </button>
+            </div>
+          </section>
         </div>
       </main>
     </div>
+
+    <dialog id="project-dialog">
+      <form id="project-form">
+        <div class="dialog-head"><div><p class="eyebrow">NEW ROBOTICS PROJECT</p><h2>Create project</h2></div><button type="button" id="close-project-dialog" aria-label="Close">×</button></div>
+        <label>Project name
+          <input id="project-name" name="name" type="text" maxlength="160" placeholder="Warehouse pick-and-place arm" required />
+        </label>
+        <label>Author
+          <input id="project-author" name="author" type="text" maxlength="160" placeholder="your name" required />
+        </label>
+        <label>Description
+          <input id="project-description" name="description" type="text" maxlength="4000" placeholder="6-DOF arm for palletizing" />
+        </label>
+        <label>Requirements (semicolon separated)
+          <input id="project-requirements" name="requirements" type="text" placeholder="Payload 5kg; Reach 900mm" />
+        </label>
+        <label>Parts (JSON array, optional)
+          <input id="project-parts" name="parts" type="text" placeholder='[{"id":"base","position":[0,0,0],"dimensions":[200,200,100],"mass_kg":12,"min_clearance_mm":10}]' />
+        </label>
+        <p class="form-hint" id="project-form-hint">Parts/wiring/hydraulics accept structured JSON; leave blank to start with an empty revision.</p>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-project-dialog" type="button">Cancel</button><button class="primary-button" type="submit">Create project <span>→</span></button></div>
+      </form>
+    </dialog>
 
     <dialog id="job-dialog">
       <form id="job-form">
