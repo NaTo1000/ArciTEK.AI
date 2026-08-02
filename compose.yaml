@@ -1,0 +1,41 @@
+name: arcitek-ai
+
+services:
+  app:
+    image: ${ARCITEK_IMAGE:-arcitek-ai:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    restart: unless-stopped
+    environment:
+      ARCITEK_HOST: 0.0.0.0
+      ARCITEK_PORT: 8000
+      ARCITEK_WORKERS: ${ARCITEK_WORKERS:-2}
+      ARCITEK_DATABASE: /app/data/arcitek.db
+      ARCITEK_API_TOKEN: ${ARCITEK_API_TOKEN:?Set ARCITEK_API_TOKEN before starting the service}
+      ARCITEK_API_PRINCIPAL: ${ARCITEK_API_PRINCIPAL:-compose-operator}
+    ports:
+      - "${ARCITEK_BIND_ADDRESS:-127.0.0.1}:${ARCITEK_BIND_PORT:-8000}:8000"
+    volumes:
+      - arcitek-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  arcitek-data:

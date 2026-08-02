@@ -58,15 +58,19 @@ For local development and testing, you can run the platform directly on your mac
 
 ### Docker
 
-A containerized deployment using Docker is recommended for consistency and portability. The `deploy.sh` script can build the Docker image and run the container for you. Alternatively, you can build and run it manually:
+A containerized deployment using Docker Compose is recommended for consistency
+and portability. The Compose configuration includes persistent SQLite storage,
+health checks, and a hardened unprivileged container. Generate an API token and
+start the service:
 
 ```bash
-# Build the Docker image
-docker build -t arcitek-ai:latest .
-
-# Run the container
-docker run -d -p 5000:5000 -p 8000:8000 --name arcitek-ai arcitek-ai:latest
+export ARCITEK_API_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+docker compose up --build --detach --wait
+curl --fail http://127.0.0.1:8000/api/health
 ```
+
+See [CI_CD.md](CI_CD.md) for the full CI/CD pipeline, configuration,
+production image, release, rollback, and troubleshooting documentation.
 
 ### Cloud Platforms (AWS, GCP, Azure)
 
