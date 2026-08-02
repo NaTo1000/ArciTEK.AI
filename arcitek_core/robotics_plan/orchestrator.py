@@ -176,6 +176,7 @@ def _run_safety_reviewer(snapshot: dict[str, Any], upstream: dict[str, Any]) -> 
             if severity_counts.get("high")
             or alignment_status == "human_review_required"
             or alignment.get("drift_detected")
+            or alignment.get("requires_human_review")
             else "no_blocking_issues"
         )
     )

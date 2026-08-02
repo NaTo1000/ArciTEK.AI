@@ -11,6 +11,7 @@ from arcitek_core.robotics_plan import (
 )
 from arcitek_core.robotics_plan.intent import BUILT_IN_GUARDRAILS
 from arcitek_core.robotics_plan.storage import SQLiteStore
+from arcitek_core.robotics_plan.validation import ValidationError
 
 
 class IntentAlignmentTests(unittest.TestCase):
@@ -155,6 +156,34 @@ class IntentAlignmentTests(unittest.TestCase):
         )
         restarted_store.close()
         self.store = SQLiteStore(":memory:")
+
+    def test_active_intent_uses_newest_profile_beyond_history_limit(self):
+        for index in range(1_001):
+            self.engine.capture_intent(
+                project_id=self.project["id"],
+                actor="operator",
+                reason=f"Intent version {index}",
+                goal=f"Goal {index}",
+                success_criteria=["Stay aligned"],
+            )
+
+        self.assertEqual(
+            self.engine.get_active_intent(self.project["id"])["goal"], "Goal 1000"
+        )
+        history = self.engine.list_intents(self.project["id"])
+        self.assertEqual(len(history), 1_000)
+        self.assertEqual(history[-1]["goal"], "Goal 1000")
+
+    def test_malformed_internal_intent_record_is_rejected(self):
+        self.knowledge.append_record(
+            project_id=self.project["id"],
+            actor="internal",
+            reason="Malformed record",
+            record_type="intent_profile",
+            content={"goal": "Forged"},
+        )
+        with self.assertRaisesRegex(ValidationError, "success criteria"):
+            self.engine.get_active_intent(self.project["id"])
 
 
 if __name__ == "__main__":

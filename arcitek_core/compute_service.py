@@ -29,6 +29,7 @@ from .robotics_plan import (
     simulation,
 )
 from .robotics_plan.storage import SQLiteStore
+from .robotics_plan.intent import RESERVED_RECORD_TYPES
 from .robotics_plan.validation import ValidationError
 
 
@@ -501,6 +502,10 @@ class RoboticsPlanAPI:
         return HTTPStatus.OK, {"records": records}
 
     def _append_knowledge(self, params, query, body):
+        if body.get("record_type") in RESERVED_RECORD_TYPES:
+            raise ValidationError(
+                "HIAI and PECS record types must use the intent endpoints"
+            )
         record = self.knowledge.append_record(
             project_id=params["project_id"],
             actor=body.get("actor", "anonymous"),

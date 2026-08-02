@@ -28,6 +28,9 @@ BUILT_IN_GUARDRAILS = (
     "Do not execute caller-supplied code or commands",
     "Preserve immutable revision and audit history",
 )
+RESERVED_RECORD_TYPES = frozenset(
+    {"intent_profile", "pecs_evaluation", "pecs_outcome"}
+)
 MAX_CANDIDATES = 50
 
 
@@ -98,21 +101,28 @@ class IntentAlignmentEngine:
     ) -> dict[str, Any] | None:
         project_id = validate_identifier(project_id, "project_id")
         records = self.knowledge.timeline(
-            project_id, record_type="intent_profile", limit=1_000
+            project_id,
+            record_type="intent_profile",
+            limit=1,
+            newest_first=True,
         )
         if not records:
             if required:
                 raise ValidationError("No intent profile exists for this project")
             return None
-        return self._profile(records[-1])
+        return self._profile(records[0])
 
     def list_intents(self, project_id: str) -> list[dict[str, Any]]:
         project_id = validate_identifier(project_id, "project_id")
+        records = self.knowledge.timeline(
+            project_id,
+            record_type="intent_profile",
+            limit=1_000,
+            newest_first=True,
+        )
         return [
             self._profile(record)
-            for record in self.knowledge.timeline(
-                project_id, record_type="intent_profile", limit=1_000
-            )
+            for record in reversed(records)
         ]
 
     def evaluate_moves(
@@ -193,13 +203,31 @@ class IntentAlignmentEngine:
             raise ValidationError(
                 "evaluation_id must reference a PECS evaluation in the same project"
             )
-        selected_id = evaluation["content"].get("selected_candidate_id")
+        evaluation_content = validate_dict(
+            evaluation["content"], "evaluation.content"
+        )
+        selected_id = evaluation_content.get("selected_candidate_id")
         if selected_id is None:
             raise ValidationError("Cannot record an outcome for a blocked evaluation")
-        selected = next(
-            item
-            for item in evaluation["content"]["candidates"]
-            if item["id"] == selected_id
+        selected_id = validate_identifier(selected_id, "selected_candidate_id")
+        candidates = validate_list(
+            evaluation_content.get("candidates"),
+            "evaluation.content.candidates",
+            max_items=MAX_CANDIDATES,
+        )
+        matches = [
+            validate_dict(item, "evaluation.content.candidates[]")
+            for item in candidates
+            if isinstance(item, dict) and item.get("id") == selected_id
+        ]
+        if len(matches) != 1:
+            raise ValidationError("PECS evaluation has an invalid selected candidate")
+        selected = matches[0]
+        selected_error = validate_number(
+            selected.get("predicted_error"),
+            "evaluation.content.predicted_error",
+            minimum=0,
+            maximum=1,
         )
         actual_error = validate_number(
             actual_error, "actual_error", minimum=0, maximum=1
@@ -212,10 +240,10 @@ class IntentAlignmentEngine:
             content={
                 "evaluation_id": evaluation_id,
                 "candidate_id": selected_id,
-                "predicted_error": selected["predicted_error"],
+                "predicted_error": selected_error,
                 "actual_error": actual_error,
                 "prediction_delta": round(
-                    actual_error - selected["predicted_error"], 6
+                    actual_error - selected_error, 6
                 ),
                 "notes": validate_string(
                     notes,
@@ -303,26 +331,73 @@ class IntentAlignmentEngine:
 
     def _calibration_error(self, project_id: str) -> float:
         outcomes = self.knowledge.timeline(
-            project_id, record_type="pecs_outcome", limit=200
+            project_id,
+            record_type="pecs_outcome",
+            limit=200,
+            newest_first=True,
         )
         if not outcomes:
             return 0.0
         absolute_errors = [
-            abs(
-                record["content"]["actual_error"]
-                - record["content"]["predicted_error"]
-            )
+            abs(self._outcome_error(record))
             for record in outcomes
         ]
         return round(min(0.5, statistics.fmean(absolute_errors)), 6)
 
     @staticmethod
     def _profile(record: dict[str, Any]) -> dict[str, Any]:
+        content = validate_dict(record.get("content"), "intent_profile.content")
+        criteria = _string_list(
+            content.get("success_criteria"),
+            "intent_profile.success_criteria",
+        )
+        if not criteria:
+            raise ValidationError(
+                "Stored intent profile must contain success criteria"
+            )
+        guardrails = _string_list(
+            content.get("guardrails"), "intent_profile.guardrails"
+        )
+        if not set(BUILT_IN_GUARDRAILS).issubset(guardrails):
+            raise ValidationError(
+                "Stored intent profile is missing built-in guardrails"
+            )
         return {
             "id": record["id"],
             "project_id": record["project_id"],
             "actor": record["actor"],
             "reason": record["reason"],
             "created_at": record["created_at"],
-            **record["content"],
+            "goal": validate_string(
+                content.get("goal"), "intent_profile.goal", max_len=MAX_TEXT_LENGTH
+            ),
+            "success_criteria": criteria,
+            "constraints": _string_list(
+                content.get("constraints"), "intent_profile.constraints"
+            ),
+            "guardrails": guardrails,
+            "custom_guardrails": _string_list(
+                content.get("custom_guardrails"),
+                "intent_profile.custom_guardrails",
+            ),
+            "out_of_scope": _string_list(
+                content.get("out_of_scope"), "intent_profile.out_of_scope"
+            ),
         }
+
+    @staticmethod
+    def _outcome_error(record: dict[str, Any]) -> float:
+        content = validate_dict(record.get("content"), "pecs_outcome.content")
+        actual = validate_number(
+            content.get("actual_error"),
+            "pecs_outcome.actual_error",
+            minimum=0,
+            maximum=1,
+        )
+        predicted = validate_number(
+            content.get("predicted_error"),
+            "pecs_outcome.predicted_error",
+            minimum=0,
+            maximum=1,
+        )
+        return actual - predicted

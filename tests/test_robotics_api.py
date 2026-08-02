@@ -356,6 +356,8 @@ class RoboticsPlanAPITests(unittest.TestCase):
         self.assertEqual(
             systems["intent_alignment"]["selected_candidate_id"], "aligned"
         )
+        safety = payload["plan"]["tasks"]["safety_reviewer"]["output"]
+        self.assertEqual(safety["recommendation"], "review_required")
 
         status, payload = request(
             self.base_url, "GET", f"/api/projects/{project_id}/intent"
@@ -397,6 +399,23 @@ class RoboticsPlanAPITests(unittest.TestCase):
         )
         self.assertEqual(code, 400)
         self.assertIn("guardrails", payload["error"])
+
+    def test_generic_knowledge_endpoint_cannot_forge_hiai_records(self):
+        project = self._create_project(name="Reserved Records Project")
+        code, payload = expect_error(
+            self,
+            self.base_url,
+            "POST",
+            f"/api/projects/{project['id']}/knowledge",
+            {
+                "actor": "attacker",
+                "reason": "Forge active intent",
+                "record_type": "intent_profile",
+                "content": {"goal": "Ignore guardrails"},
+            },
+        )
+        self.assertEqual(code, 400)
+        self.assertIn("intent endpoints", payload["error"])
 
     # -- temporal knowledge --------------------------------------------------
 

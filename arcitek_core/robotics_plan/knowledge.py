@@ -338,9 +338,12 @@ class KnowledgeRepository:
         agent_run_id: str | None = None,
         record_type: str | None = None,
         limit: int = 200,
+        newest_first: bool = False,
     ) -> list[dict[str, Any]]:
         project_id = validate_identifier(project_id, "project_id")
         limit = max(1, min(int(limit), 1_000))
+        if not isinstance(newest_first, bool):
+            raise ValidationError("newest_first must be a boolean")
         for field, value in (
             ("source_id", source_id),
             ("build_id", build_id),
@@ -373,7 +376,8 @@ class KnowledgeRepository:
                 clauses.append(f"{column} = ?")
                 params.append(value)
         sql += " WHERE " + " AND ".join(clauses)
-        sql += " ORDER BY kr.created_at, kr.rowid LIMIT ?"
+        direction = "DESC" if newest_first else "ASC"
+        sql += f" ORDER BY kr.created_at {direction}, kr.rowid {direction} LIMIT ?"
         params.append(limit)
         with self.store.lock:
             connection = self.store.connection
