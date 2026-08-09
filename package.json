@@ -4,20 +4,20 @@
   "description": "The Ultimate Quantum-Enhanced Precision Build System",
   "main": "arcitek_ui/index.js",
   "scripts": {
-    "start": "./startup.sh start",
+    "start": "python3 -m arcitek_core.compute_service",
     "stop": "./startup.sh stop",
     "restart": "./startup.sh restart",
     "health": "./startup.sh health",
     "upgrade": "python3 upgrade.py upgrade",
     "status": "python3 upgrade.py status",
-    "test": "npm run test:unit && npm run test:integration",
+    "test": "python3 -m unittest discover -s tests -p 'test_*.py'",
     "test:unit": "jest tests/unit/",
     "test:integration": "jest tests/integration/",
     "test:quantum": "jest tests/quantum/",
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "dev": "webpack serve --mode development",
-    "lint": "eslint arcitek_ui/ --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint arcitek_ui/web/app.js --env browser,es2022",
     "lint:fix": "eslint arcitek_ui/ --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write arcitek_ui/",
     "docs": "typedoc --out docs/api arcitek_ui/",
@@ -50,63 +50,65 @@
     "url": "https://github.com/NaTo1000/ArciTEK.AI/issues"
   },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=22.15.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.2.0",
+    "antd": "^5.12.0",
+    "axios": "^1.6.0",
+    "classnames": "^2.3.2",
+    "d3": "^7.8.5",
+    "framer-motion": "^10.16.0",
+    "lodash": "^4.17.21",
+    "moment": "^2.29.4",
+    "monaco-editor": "^0.44.0",
+    "plotly.js": "^2.27.0",
+    "prop-types": "^15.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.8.0",
-    "axios": "^1.6.0",
-    "socket.io-client": "^4.7.0",
-    "monaco-editor": "^0.44.0",
-    "xterm": "^5.3.0",
-    "three": "^0.158.0",
-    "d3": "^7.8.5",
-    "plotly.js": "^2.27.0",
-    "antd": "^5.12.0",
-    "@ant-design/icons": "^5.2.0",
-    "styled-components": "^6.1.0",
-    "framer-motion": "^10.16.0",
     "recharts": "^2.8.0",
-    "moment": "^2.29.4",
-    "lodash": "^4.17.21",
-    "uuid": "^9.0.1",
-    "classnames": "^2.3.2",
-    "prop-types": "^15.8.1"
+    "socket.io-client": "^4.7.0",
+    "styled-components": "^6.1.0",
+    "three": "^0.158.0",
+    "uuid": "^11.1.1",
+    "xterm": "^5.3.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@types/node": "^20.10.0",
-    "@types/lodash": "^4.14.0",
-    "@types/uuid": "^9.0.0",
-    "typescript": "^5.3.0",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.0",
-    "webpack-dev-server": "^4.15.0",
-    "babel-loader": "^9.1.0",
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
     "@babel/preset-react": "^7.22.0",
     "@babel/preset-typescript": "^7.23.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/react": "^13.4.0",
+    "@types/lodash": "^4.14.0",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
+    "@typescript-eslint/parser": "^8.64.0",
+    "babel-loader": "^9.1.0",
     "css-loader": "^6.8.0",
-    "style-loader": "^3.3.0",
-    "html-webpack-plugin": "^5.5.0",
     "eslint": "^8.55.0",
     "eslint-plugin-react": "^7.33.0",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0",
-    "prettier": "^3.1.0",
+    "html-webpack-plugin": "^5.5.0",
     "jest": "^29.7.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/jest-dom": "^6.1.0",
-    "typedoc": "^0.25.0"
+    "prettier": "^3.1.0",
+    "style-loader": "^3.3.0",
+    "typedoc": "^0.25.0",
+    "typescript": "^5.3.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^6.0.0"
   },
   "jest": {
     "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
     "moduleNameMapping": {
       "\\.(css|less|scss|sass)$": "identity-obj-proxy"
     },
@@ -129,7 +131,7 @@
   "eslintConfig": {
     "extends": [
       "eslint:recommended",
-      "@typescript-eslint/recommended",
+      "plugin:@typescript-eslint/recommended",
       "plugin:react/recommended",
       "plugin:react-hooks/recommended"
     ],
@@ -179,11 +181,10 @@
     ],
     "ai_models": [
       "supersynapai",
-      "argo_bots", 
+      "argo_bots",
       "chimera_models",
       "naydoev1",
       "jessicai_v2"
     ]
   }
 }
-

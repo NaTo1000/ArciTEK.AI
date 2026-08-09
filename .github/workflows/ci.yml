@@ -1,212 +1,161 @@
-name: ArciTEK.AI CI/CD Pipeline
+name: CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - main
+      - develop
+    tags:
+      - "v*"
   pull_request:
-    branches: [ main, develop ]
-  schedule:
-    # Run tests daily at 2 AM UTC
-    - cron: '0 2 * * *'
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
-  PYTHON_VERSION: '3.11'
-  NODE_VERSION: '18'
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.11"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Code quality and linting
-  lint:
-    name: Code Quality & Linting
+  validate:
+    name: Test, lint, and build
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 black isort mypy pylint
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    
-    - name: Run Black (code formatter)
-      run: black --check .
-      continue-on-error: true
-    
-    - name: Run Flake8 (linter)
-      run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    
-    - name: Run Pylint
-      run: pylint arcitek_core/ --exit-zero
-      continue-on-error: true
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-  quantum-tests:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Compile Python sources
+        run: python -m compileall -q arcitek_core
+
+      - name: Run Python tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: arcitek_ui/web/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  container:
+    name: Build and smoke-test container
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.9', '3.10', '3.11']
-    
+    needs: validate
+    timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install quantum dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install qiskit cirq pennylane
-        pip install -r requirements.txt
-    
-    - name: Run quantum integration tests
-      run: |
-        python -m pytest tests/quantum/ -v
-    
-    - name: Test NayDoeV1 learning environments
-      run: |
-        python -m pytest tests/naydoev1/ -v
-    
-    - name: Precision build system tests
-      run: |
-        python -m pytest tests/build_system/ -v
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-  ai-model-tests:
+      - name: Build image
+        run: docker build --tag arcitek-ai:ci .
+
+      - name: Validate Compose configuration
+        env:
+          ARCITEK_API_TOKEN: ci-only-token
+        run: docker compose config --quiet
+
+      - name: Start Compose service
+        env:
+          ARCITEK_API_TOKEN: ci-only-token
+          ARCITEK_BIND_PORT: "18000"
+        run: docker compose up --detach --wait
+
+      - name: Smoke-test health endpoint
+        run: curl --fail --show-error http://127.0.0.1:18000/api/health
+
+      - name: Show container logs
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop Compose service
+        if: always()
+        env:
+          ARCITEK_API_TOKEN: ci-only-token
+        run: docker compose down --volumes
+
+  publish:
+    name: Publish production image
     runs-on: ubuntu-latest
-    
+    needs: container
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.11
-    
-    - name: Install AI dependencies
-      run: |
-        pip install torch transformers openai anthropic
-        pip install -r requirements.txt
-    
-    - name: Test SupersynapAI model
-      run: |
-        python supersynapai/test_model.py
-    
-    - name: Test Argo bots
-      run: |
-        python argo_bots/test_coordination.py
-    
-    - name: Test Chimera models
-      run: |
-        python chimera_models/test_fusion.py
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-  security-scan:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Run Bandit (security linter)
-      run: |
-        pip install bandit
-        bandit -r arcitek_core/ -f json -o bandit-report.json
-      continue-on-error: true
-    
-    - name: Run Safety (dependency checker)
-      run: |
-        pip install safety
-        safety check --json
-      continue-on-error: true
-    
-    - name: JessicAI v2 security validation
-      run: |
-        python tests/security/jessicai_v2_scan.py
-    
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-reports
-        path: |
-          bandit-report.json
-      if: always()
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-  # Docker build and test
-  docker:
-    name: Docker Build & Test
-    runs-on: ubuntu-latest
-    needs: [lint, quantum-tests, ai-model-tests]
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    
-    - name: Build Docker image
-      run: |
-        docker build -t arcitek-ai:test .
-      continue-on-error: true
-    
-    - name: Test Docker image
-      run: |
-        docker run --rm arcitek-ai:test python --version
-      continue-on-error: true
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-  # Performance benchmarks
-  benchmark:
-    name: Performance Benchmarks
-    runs-on: ubuntu-latest
-    needs: [quantum-tests]
-    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[benchmark]')
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-benchmark
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    
-    - name: Run benchmarks
-      run: |
-        pytest tests/performance/ -v --benchmark-only
-      continue-on-error: true
-    
-    - name: Upload benchmark results
-      uses: actions/upload-artifact@v4
-      with:
-        name: benchmark-results
-        path: .benchmarks/
-      if: always()
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
 
-  deployment:
-    needs: [lint, quantum-tests, ai-model-tests, security-scan, docker]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to infinite2025.com
-      run: |
-        echo "Deploying ArciTEK.AI to production..."
-        # Deployment scripts would go here
-    
-    - name: Update quantum performance metrics
-      run: |
-        python scripts/update_metrics.py
-    
-    - name: Notify deployment success
-      run: |
-        echo "✅ ArciTEK.AI deployed successfully to infinite2025.com"
+      - name: Build and publish image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
+      - name: Attest image provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

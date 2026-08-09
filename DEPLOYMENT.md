@@ -58,15 +58,19 @@ For local development and testing, you can run the platform directly on your mac
 
 ### Docker
 
-A containerized deployment using Docker is recommended for consistency and portability. The `deploy.sh` script can build the Docker image and run the container for you. Alternatively, you can build and run it manually:
+A containerized deployment using Docker Compose is recommended for consistency
+and portability. The Compose configuration includes persistent SQLite storage,
+health checks, and a hardened unprivileged container. Generate an API token and
+start the service:
 
 ```bash
-# Build the Docker image
-docker build -t arcitek-ai:latest .
-
-# Run the container
-docker run -d -p 5000:5000 -p 8000:8000 --name arcitek-ai arcitek-ai:latest
+export ARCITEK_API_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+docker compose up --build --detach --wait
+curl --fail http://127.0.0.1:8000/api/health
 ```
+
+See [CI_CD.md](CI_CD.md) for the full CI/CD pipeline, configuration,
+production image, release, rollback, and troubleshooting documentation.
 
 ### Cloud Platforms (AWS, GCP, Azure)
 
@@ -88,6 +92,29 @@ kubectl apply -f k8s/
 ### Custom VPS
 
 You can also deploy ArciTEK.AI to a custom Virtual Private Server (VPS). The `deploy.sh` script provides an option for this, which will `rsync` the project files to your server and set up a `systemd` service for you.
+
+#### Compute SaaS dashboard
+
+Build the browser bundle and start the compute API/dashboard on the VPS:
+
+```bash
+npm install
+npm run build
+ARCITEK_HOST=0.0.0.0 ARCITEK_PORT=8000 ARCITEK_WORKERS=4 \
+ARCITEK_API_TOKEN='<random-long-token>' \
+ARCITEK_API_PRINCIPAL='deployment-operator' npm start
+```
+
+The dashboard and API are served from the same origin at port `8000`. Place a
+TLS-enabled reverse proxy in front of the service before exposing it publicly.
+Non-loopback binding is rejected unless `ARCITEK_API_TOKEN` is set. Protected
+API requests must send that value in the `Authorization` request header using
+the standard bearer authentication scheme. The configured
+`ARCITEK_API_PRINCIPAL` becomes the server-side audit identity instead of
+trusting caller-supplied actor or approver names. Keep both values in the
+runtime environment or a secret manager, never in source control.
+The compute API accepts only predefined, resource-bounded workloads; it does
+not execute arbitrary commands.
 
 ## Configuration
 
@@ -112,4 +139,3 @@ The platform includes a monitoring and diagnostics system, `monitor.py`. You can
 ## Troubleshooting
 
 If you encounter any issues during deployment, please refer to the `TROUBLESHOOTING.md` file in the `docs` directory for common problems and solutions.
-

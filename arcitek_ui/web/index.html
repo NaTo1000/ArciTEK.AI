@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="ArciTEK Compute — deploy and monitor high-performance workloads from one workspace."
+    />
+    <title>ArciTEK Compute</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="ArciTEK Compute home">
+          <span class="brand-mark">A</span>
+          <span>ArciTEK<span class="brand-accent">.AI</span></span>
+        </a>
+        <nav class="nav" aria-label="Main navigation">
+          <a class="nav-item active" href="#overview">
+            <span class="nav-icon">⌁</span> Overview
+          </a>
+          <a class="nav-item" href="#workloads">
+            <span class="nav-icon">◇</span> Workloads
+          </a>
+          <a class="nav-item" href="#infrastructure">
+            <span class="nav-icon">◫</span> Infrastructure
+          </a>
+          <a class="nav-item" href="#activity">
+            <span class="nav-icon">↗</span> Activity
+          </a>
+          <a class="nav-item" href="#engineering">
+            <span class="nav-icon">⚙</span> Engineering
+          </a>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="plan-card">
+            <div class="plan-orbit">✦</div>
+            <strong>Compute Pro</strong>
+            <span>64 vCPU available</span>
+            <div class="usage"><i></i></div>
+            <small>18.4k / 50k credits</small>
+          </div>
+          <div class="profile">
+            <div class="avatar">NT</div>
+            <div><strong>Workspace</strong><span>Production</span></div>
+            <button type="button" aria-label="Workspace settings">•••</button>
+          </div>
+        </div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <button class="mobile-menu" type="button" aria-label="Open navigation">☰</button>
+          <div class="environment">
+            <span class="status-dot"></span>
+            Production
+            <span class="region">VPS · 76.13.176.184</span>
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" type="button" aria-label="Notifications">◌</button>
+            <button class="docs-button" type="button">API Docs <span>↗</span></button>
+          </div>
+        </header>
+
+        <div class="content" id="overview">
+          <section class="welcome">
+            <div>
+              <p class="eyebrow">COMPUTE CONTROL PLANE</p>
+              <h1>Build without limits.</h1>
+              <p>Deploy high-performance workloads to your private compute cloud.</p>
+            </div>
+            <button class="primary-button" id="open-job" type="button">
+              <span>＋</span> New workload
+            </button>
+          </section>
+
+          <section class="metrics-grid" aria-label="Compute metrics">
+            <article class="metric-card">
+              <div class="metric-head"><span>CPU utilization</span><b class="green">Live</b></div>
+              <div class="metric-value"><strong id="cpu-value">--</strong><small>%</small></div>
+              <div class="spark-bars" id="cpu-bars" aria-hidden="true"></div>
+              <p><span class="trend">↗ 4.2%</span> from last hour</p>
+            </article>
+            <article class="metric-card">
+              <div class="metric-head"><span>Memory usage</span><b>128 GB</b></div>
+              <div class="metric-value"><strong id="memory-value">--</strong><small>%</small></div>
+              <div class="progress"><i id="memory-progress"></i></div>
+              <p><span id="memory-free">Calculating</span> available</p>
+            </article>
+            <article class="metric-card">
+              <div class="metric-head"><span>Active workloads</span><b class="purple">Compute</b></div>
+              <div class="metric-value"><strong id="jobs-value">0</strong><small>jobs</small></div>
+              <div class="job-summary">
+                <span><i class="running-dot"></i><b id="running-count">0</b> running</span>
+                <span><i class="queued-dot"></i><b id="queued-count">0</b> queued</span>
+              </div>
+              <p><span class="trend">99.99%</span> successful execution</p>
+            </article>
+            <article class="metric-card uptime-card">
+              <div class="metric-head"><span>System uptime</span><b class="green">Operational</b></div>
+              <div class="metric-value"><strong id="uptime-value">--</strong><small>uptime</small></div>
+              <div class="node-line"><i></i><i></i><i></i><i></i><i></i></div>
+              <p>All compute nodes healthy</p>
+            </article>
+          </section>
+
+          <section class="workspace-grid">
+            <article class="panel" id="activity">
+              <div class="panel-head">
+                <div><h2>Recent workloads</h2><p>Live execution across your compute fleet</p></div>
+                <button class="text-button" id="refresh-jobs" type="button">Refresh ↻</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Workload</th><th>Status</th><th>Compute</th><th>Duration</th><th>Created</th></tr>
+                  </thead>
+                  <tbody id="jobs-table">
+                    <tr class="empty-row"><td colspan="5">No workloads yet. Launch your first compute job.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="panel infrastructure" id="infrastructure">
+              <div class="panel-head">
+                <div><h2>Infrastructure</h2><p>VPS compute node</p></div>
+                <span class="status-pill"><i></i> Online</span>
+              </div>
+              <div class="server-visual">
+                <div class="server-ring ring-one"></div>
+                <div class="server-ring ring-two"></div>
+                <div class="server-core">
+                  <span></span><span></span><span></span>
+                  <b>ARC</b>
+                </div>
+              </div>
+              <div class="server-info">
+                <div><span>Region</span><strong>Private VPS</strong></div>
+                <div><span>Endpoint</span><strong>76.13.176.184</strong></div>
+                <div><span>Workers</span><strong id="worker-count">--</strong></div>
+              </div>
+            </article>
+          </section>
+
+          <section class="quick-actions" id="workloads">
+            <div class="section-title"><h2>Quick deploy</h2><p>Start an optimized compute workload</p></div>
+            <div class="action-grid">
+              <button class="action-card" data-workload="prime-scan" data-size="75000" type="button">
+                <span class="action-icon cyan">⌗</span><div><strong>Prime scan</strong><small>CPU optimized</small></div><b>→</b>
+              </button>
+              <button class="action-card" data-workload="hash-benchmark" data-size="100000" type="button">
+                <span class="action-icon purple-bg">✣</span><div><strong>Hash benchmark</strong><small>Crypto compute</small></div><b>→</b>
+              </button>
+              <button class="action-card" data-workload="fibonacci" data-size="10000" type="button">
+                <span class="action-icon gold">∞</span><div><strong>Sequence engine</strong><small>Memory optimized</small></div><b>→</b>
+              </button>
+            </div>
+          </section>
+
+          <section class="quick-actions" id="engineering">
+            <div class="section-title">
+              <h2>Engineering control plane</h2>
+              <p>Robotics project revisions, rule-based findings, and expert plans — release always requires human approval</p>
+            </div>
+
+            <div class="panel-head eng-toolbar">
+              <div><h2>Robotics projects</h2><p>Create a project, then select it to work with revisions and plans</p></div>
+              <div class="eng-toolbar-actions">
+                <button class="text-button" id="refresh-engineering" type="button">Refresh ↻</button>
+                <button class="primary-button" id="open-project" type="button"><span>＋</span> New project</button>
+              </div>
+            </div>
+
+            <div class="workspace-grid">
+              <article class="panel">
+                <div class="panel-head">
+                  <div><h2>Projects</h2><p>Select a project to load its current revision</p></div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Project</th><th>Revision</th><th>Approval</th><th>Findings</th></tr></thead>
+                    <tbody id="projects-table"><tr class="empty-row"><td colspan="4">No projects yet. Create one to begin.</td></tr></tbody>
+                  </table>
+                </div>
+              </article>
+              <article class="panel infrastructure">
+                <div class="panel-head">
+                  <div><h2>Plan metrics</h2><p>Live orchestration summary</p></div>
+                </div>
+                <div class="server-info">
+                  <div><span>Projects</span><strong id="eng-project-count">--</strong></div>
+                  <div><span>Plans</span><strong id="eng-plan-count">--</strong></div>
+                  <div><span>Released</span><strong id="eng-plan-released">--</strong></div>
+                </div>
+                <div class="server-info">
+                  <div><span>Awaiting approval</span><strong id="eng-plan-pending">--</strong></div>
+                  <div><span>Critical findings</span><strong id="eng-critical-count">--</strong></div>
+                  <div><span>Selected project</span><strong id="eng-selected-project">none</strong></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="workspace-grid eng-gap-top">
+              <article class="panel">
+                <div class="panel-head">
+                  <div><h2>Findings</h2><p>Rule-based clearance, wiring, and hydraulics checks for the selected revision</p></div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Severity</th><th>Rule</th><th>Message</th><th>Confidence</th></tr></thead>
+                    <tbody id="findings-table"><tr class="empty-row"><td colspan="4">Select a project to view findings.</td></tr></tbody>
+                  </table>
+                </div>
+              </article>
+              <article class="panel infrastructure">
+                <div class="panel-head">
+                  <div><h2>Expert agent activity</h2><p>Dependency-aware orchestration log</p></div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Action</th><th>When</th></tr></thead>
+                    <tbody id="activity-table"><tr class="empty-row"><td colspan="2">No plan activity yet.</td></tr></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+
+            <div class="action-grid eng-gap-top">
+              <button class="action-card" id="create-plan-btn" type="button">
+                <span class="action-icon cyan">▶</span><div><strong>Generate expert plan</strong><small>Dependency-aware orchestration</small></div><b>→</b>
+              </button>
+              <button class="action-card" id="approve-revision-btn" type="button">
+                <span class="action-icon purple-bg">✓</span><div><strong>Approve current revision</strong><small>Human approval required</small></div><b>→</b>
+              </button>
+              <button class="action-card" id="approve-plan-btn" type="button">
+                <span class="action-icon gold">☑</span><div><strong>Approve latest plan</strong><small>Release gate</small></div><b>→</b>
+              </button>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="project-dialog">
+      <form id="project-form">
+        <div class="dialog-head"><div><p class="eyebrow">NEW ROBOTICS PROJECT</p><h2>Create project</h2></div><button type="button" id="close-project-dialog" aria-label="Close">×</button></div>
+        <label>Project name
+          <input id="project-name" name="name" type="text" maxlength="160" placeholder="Warehouse pick-and-place arm" required />
+        </label>
+        <label>Author
+          <input id="project-author" name="author" type="text" maxlength="160" placeholder="your name" required />
+        </label>
+        <label>Description
+          <input id="project-description" name="description" type="text" maxlength="4000" placeholder="6-DOF arm for palletizing" />
+        </label>
+        <label>Requirements (semicolon separated)
+          <input id="project-requirements" name="requirements" type="text" placeholder="Payload 5kg; Reach 900mm" />
+        </label>
+        <label>Parts (JSON array, optional)
+          <input id="project-parts" name="parts" type="text" placeholder='[{"id":"base","position":[0,0,0],"dimensions":[200,200,100],"mass_kg":12,"min_clearance_mm":10}]' />
+        </label>
+        <p class="form-hint" id="project-form-hint">Parts/wiring/hydraulics accept structured JSON; leave blank to start with an empty revision.</p>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-project-dialog" type="button">Cancel</button><button class="primary-button" type="submit">Create project <span>→</span></button></div>
+      </form>
+    </dialog>
+
+    <dialog id="job-dialog">
+      <form id="job-form">
+        <div class="dialog-head"><div><p class="eyebrow">NEW DEPLOYMENT</p><h2>Launch workload</h2></div><button type="button" id="close-dialog" aria-label="Close">×</button></div>
+        <label>Compute workload
+          <select id="workload-select" name="workload">
+            <option value="prime-scan">Prime scan</option>
+            <option value="hash-benchmark">Hash benchmark</option>
+            <option value="fibonacci">Sequence engine</option>
+          </select>
+        </label>
+        <label>Workload size
+          <input id="workload-size" name="size" type="number" min="1000" value="75000" required />
+        </label>
+        <p class="form-hint" id="form-hint">Accepted range: 1,000–2,000,000</p>
+        <div class="dialog-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancel</button><button class="primary-button" type="submit">Deploy now <span>→</span></button></div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>
