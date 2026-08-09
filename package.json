@@ -10,6 +10,7 @@
     "health": "./startup.sh health",
     "upgrade": "python3 upgrade.py upgrade",
     "status": "python3 upgrade.py status",
+    "validate:build": "python3 -m arcitek_core.build_validation --path .",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "jest tests/unit/",
     "test:integration": "jest tests/integration/",

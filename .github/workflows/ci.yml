@@ -32,6 +32,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 black isort mypy pylint
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run build validation coordinator
+      run: python -m arcitek_core.build_validation --path .
     
     - name: Run Black (code formatter)
       run: black --check .
