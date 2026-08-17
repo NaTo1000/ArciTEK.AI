@@ -50,7 +50,7 @@
     "url": "https://github.com/NaTo1000/ArciTEK.AI/issues"
   },
   "engines": {
-    "node": ">=22.15.0",
+    "node": ">=24.0.0",
     "npm": ">=10.0.0"
   },
   "dependencies": {
@@ -83,7 +83,7 @@
     "@testing-library/jest-dom": "^6.1.0",
     "@testing-library/react": "^13.4.0",
     "@types/lodash": "^4.14.0",
-    "@types/node": "^20.10.0",
+    "@types/node": "^24.13.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/uuid": "^9.0.0",

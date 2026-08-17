@@ -24,7 +24,7 @@ ArciTEK.AI is committed to fostering an open and welcoming environment. We expec
 Before contributing to ArciTEK.AI, ensure you have:
 
 - **Python 3.9+** with virtual environment support
-- **Node.js 16+** for frontend development
+- **Node.js 24+** for frontend development
 - **Git** for version control
 - **Docker** (optional but recommended)
 - **Quantum Computing Knowledge** (helpful but not required)

@@ -133,32 +133,49 @@ setup_virtual_environment() {
 install_dependencies() {
     print_info "Installing ArciTEK.AI dependencies..."
     
-    # Install Python packages
+    # Install Python packages (with failover to core packages)
     if [[ -f "requirements.txt" ]]; then
-        pip install -r requirements.txt
-        print_status "Python dependencies installed"
+        if pip install -r requirements.txt; then
+            print_status "Python dependencies installed"
+        else
+            print_warning "requirements.txt install failed - falling back to core packages"
+            pip install flask fastapi uvicorn requests websockets
+            print_status "Core Python dependencies installed (fallback)"
+        fi
     else
         print_warning "requirements.txt not found - installing core packages"
         pip install flask fastapi uvicorn requests websockets
     fi
     
-    # Install Node.js packages
+    # Install Node.js packages (npm ci with failover to npm install)
     if [[ -f "package.json" ]]; then
-        npm install
-        print_status "Node.js dependencies installed"
+        if [[ -f "package-lock.json" ]] && npm ci --no-audit --no-fund; then
+            print_status "Node.js dependencies installed (npm ci)"
+        elif npm install --no-audit --no-fund; then
+            print_status "Node.js dependencies installed (npm install fallback)"
+        else
+            print_error "Failed to install Node.js dependencies"
+            exit 1
+        fi
     else
         print_info "No package.json found - skipping Node.js dependencies"
     fi
     
-    # Install quantum computing packages
+    # Install quantum computing packages (optional - failover to continue)
     print_info "Installing quantum computing packages..."
-    pip install qiskit qiskit-aer cirq pennylane
-    print_status "Quantum computing packages installed"
+    if pip install qiskit qiskit-aer cirq pennylane; then
+        print_status "Quantum computing packages installed"
+    else
+        print_warning "Quantum packages unavailable - continuing without quantum acceleration"
+    fi
     
-    # Install AI/ML packages
+    # Install AI/ML packages (optional - failover to continue)
     print_info "Installing AI/ML packages..."
-    pip install torch transformers openai anthropic
-    print_status "AI/ML packages installed"
+    if pip install torch transformers openai anthropic; then
+        print_status "AI/ML packages installed"
+    else
+        print_warning "AI/ML packages unavailable - continuing with reduced model support"
+    fi
 }
 
 # Initialize configuration

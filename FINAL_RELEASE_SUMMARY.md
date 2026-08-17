@@ -163,14 +163,14 @@ Comprehensive deployment and troubleshooting guides:
 
 **Minimum Requirements**:
 - Python 3.9+
-- Node.js 16+
+- Node.js 24+
 - 4GB RAM
 - 10GB disk space
 - Internet connection
 
 **Recommended Requirements**:
 - Python 3.11
-- Node.js 18+
+- Node.js 24+
 - 8GB+ RAM
 - 50GB+ disk space
 - Docker installed

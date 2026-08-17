@@ -28,7 +28,7 @@ Before you begin, ensure you have the following prerequisites installed on your 
 
 - **Git**: For cloning the repository.
 - **Python 3.9+**: The core runtime for ArciTEK.AI.
-- **Node.js 16+**: For frontend components.
+- **Node.js 24+**: For frontend components.
 - **Docker**: For containerized deployments.
 - **Cloud Provider CLI**: (e.g., `aws`, `gcloud`, `az`) if deploying to a cloud platform.
 - **`kubectl`**: If deploying to Kubernetes.
