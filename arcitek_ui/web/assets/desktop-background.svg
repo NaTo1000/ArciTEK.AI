@@ -114,10 +114,10 @@
 
   <!-- Wordmark -->
   <g text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
-    <text x="472" y="728" font-size="118" font-weight="700" letter-spacing="2" fill="url(#wordmark)">ArciTEK</text>
-    <text x="778" y="728" font-size="118" font-weight="800" letter-spacing="4" fill="url(#ai-red)">AI</text>
+    <text x="710" y="728" text-anchor="end" font-size="118" font-weight="700" letter-spacing="2" fill="url(#wordmark)">ArciTEK</text>
+    <text x="734" y="728" text-anchor="start" font-size="118" font-weight="800" letter-spacing="4" fill="url(#ai-red)">AI</text>
     <text x="356" y="818" font-size="64" font-weight="600" letter-spacing="2" fill="url(#infinite-blue)">infinite2025</text>
-    <text x="264" y="888" font-size="34" font-weight="500" fill="#b9b2a4" opacity=".92">powered by</text>
+    <text x="264" y="890" font-size="34" font-weight="500" fill="#b9b2a4" opacity=".92">powered by</text>
     <text x="472" y="890" font-size="42" font-weight="700" fill="#ded8ca">Watsonx</text>
     <text x="712" y="890" font-size="42" font-weight="600" letter-spacing="1" fill="#ded8ca">Q–CTRL</text>
     <text x="415" y="952" font-size="34" font-weight="700" letter-spacing="1" fill="#e8e2d4">IBM</text>

@@ -29,7 +29,7 @@ body::before {
   z-index: -1;
   background:
     linear-gradient(rgba(7, 9, 13, 0.68), rgba(7, 9, 13, 0.86)),
-    url("/assets/desktop-background.svg") center / cover no-repeat fixed var(--bg);
+    url("/assets/desktop-background.svg") center / cover no-repeat var(--bg);
   pointer-events: none;
 }
 button, input, select { font: inherit; }
