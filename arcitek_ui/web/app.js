@@ -445,7 +445,13 @@ Promise.all([refreshMetrics(), refreshJobs(), refreshEngineering()]).finally(() 
     window.ArciTEKDesktop.bootComplete();
   } else {
     const splash = document.querySelector('#splash');
-    if (splash) splash.hidden = true;
+    if (splash) {
+      splash.classList.add('splash-hidden');
+      splash.setAttribute('aria-hidden', 'true');
+      window.setTimeout(() => {
+        splash.hidden = true;
+      }, 700);
+    }
   }
 });
 window.setInterval(() => Promise.all([refreshMetrics(), refreshJobs()]), 5000);
