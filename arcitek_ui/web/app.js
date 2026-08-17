@@ -440,6 +440,13 @@ elements.approvePlanBtn.addEventListener('click', async () => {
 });
 
 renderBars();
-Promise.all([refreshMetrics(), refreshJobs(), refreshEngineering()]);
+Promise.all([refreshMetrics(), refreshJobs(), refreshEngineering()]).finally(() => {
+  if (window.ArciTEKDesktop) {
+    window.ArciTEKDesktop.bootComplete();
+  } else {
+    const splash = document.querySelector('#splash');
+    if (splash) splash.hidden = true;
+  }
+});
 window.setInterval(() => Promise.all([refreshMetrics(), refreshJobs()]), 5000);
 window.setInterval(() => refreshDashboard(), 8000);

@@ -9,8 +9,28 @@
     />
     <title>ArciTEK Compute</title>
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/desktop3d.css" />
   </head>
   <body>
+    <div class="splash" id="splash">
+      <div class="splash-inner">
+        <div class="boot-stage">
+          <div class="boot-cube" aria-hidden="true">
+            <i class="f-front">A</i>
+            <i class="f-back">I</i>
+            <i class="f-right">⌁</i>
+            <i class="f-left">◇</i>
+            <i class="f-top">✦</i>
+            <i class="f-bottom">∞</i>
+          </div>
+        </div>
+        <h1 class="splash-title">ArciTEK<span>.AI</span></h1>
+        <p class="splash-sub">QUANTUM PRECISION WORKSPACE</p>
+        <div class="boot-progress"><i id="boot-progress-bar"></i></div>
+        <p class="boot-status" id="boot-status" role="status" aria-live="polite">Booting</p>
+      </div>
+    </div>
+    <canvas id="scene3d" aria-hidden="true"></canvas>
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
     <div class="app-shell">
@@ -287,6 +307,7 @@
       </form>
     </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/scene3d.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
