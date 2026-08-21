@@ -1,0 +1,54 @@
+labels: ["enhancement", "discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 💡 Share Your Idea
+        
+        Have an idea for ArciTEK.AI? We'd love to hear it! This is a space to discuss new features, improvements, or innovative uses of quantum computing and AI.
+        
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your Idea
+      description: Describe your idea in detail
+      placeholder: |
+        What's your idea? How would it improve ArciTEK.AI?
+    validations:
+      required: true
+      
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: How would this idea be used?
+      placeholder: |
+        Describe specific scenarios where this would be valuable
+    validations:
+      required: false
+      
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What area does this idea relate to?
+      options:
+        - Quantum Computing
+        - AI Models
+        - User Interface
+        - Developer Tools
+        - Performance
+        - Documentation
+        - Other
+    validations:
+      required: true
+      
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be interested in helping implement this?
+      options:
+        - label: I'd like to help implement this idea
+        - label: I can provide feedback during development
+        - label: I can help with testing

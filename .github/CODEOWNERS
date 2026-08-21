@@ -1,0 +1,42 @@
+# ArciTEK.AI Code Owners
+# 
+# These owners will be automatically requested for review when someone 
+# opens a pull request that modifies code in specific areas.
+#
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @NaTo1000
+
+# Quantum computing integration
+/quantum/ @NaTo1000
+scripts/validate_keys.py @NaTo1000
+
+# AI models and integration
+/ai_models/ @NaTo1000
+
+# Core platform
+/arcitek_core/ @NaTo1000
+
+# Scripts and automation
+/scripts/ @NaTo1000
+startup.sh @NaTo1000
+
+# Documentation
+*.md @NaTo1000
+/docs/ @NaTo1000
+
+# CI/CD and workflows
+/.github/ @NaTo1000
+
+# Configuration and security
+SECURITY.md @NaTo1000
+CODE_OF_CONDUCT.md @NaTo1000
+LICENSE @NaTo1000
+
+# Dependencies
+requirements.txt @NaTo1000
+package.json @NaTo1000
+
+# Tests
+/tests/ @NaTo1000

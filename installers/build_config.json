@@ -1,0 +1,128 @@
+{
+  "app": {
+    "name": "ArciTEK.AI",
+    "display_name": "ArciTEK.AI",
+    "description": "Quantum-Enhanced AI Development Platform",
+    "version": "1.0.0",
+    "build_number": "100",
+    "author": "infinite2025",
+    "company": "infinite♾2025",
+    "website": "https://infinite2025.com",
+    "repository": "https://github.com/NaTo1000/ArciTEK.AI",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2025 infinite2025",
+    "identifier": "com.infinite2025.arcitek.ai"
+  },
+  "platforms": {
+    "windows": {
+      "enabled": true,
+      "min_version": "Windows 10",
+      "architecture": ["x64", "arm64"],
+      "installer_type": "nsis",
+      "output": "ArciTEK_AI_Setup_v{version}_x64.exe",
+      "install_dir": "C:\\Program Files\\ArciTEK.AI",
+      "registry_key": "HKLM\\SOFTWARE\\ArciTEK.AI",
+      "shortcuts": {
+        "desktop": true,
+        "start_menu": true,
+        "taskbar_pin": true
+      },
+      "file_associations": [".arcitek", ".qcircuit", ".aimodel"],
+      "auto_update": true,
+      "silent_install": true
+    },
+    "macos": {
+      "enabled": true,
+      "min_version": "13.0",
+      "architecture": ["universal"],
+      "installer_type": "dmg",
+      "output": "ArciTEK_AI_v{version}.dmg",
+      "bundle_id": "com.infinite2025.arcitek.ai",
+      "category": "public.app-category.developer-tools",
+      "signing": {
+        "identity": "Developer ID Application",
+        "entitlements": true,
+        "notarize": true
+      },
+      "shortcuts": {
+        "applications_folder": true,
+        "dock": true
+      }
+    },
+    "linux": {
+      "enabled": true,
+      "min_version": "Ubuntu 22.04 / Fedora 38",
+      "architecture": ["x86_64", "aarch64"],
+      "formats": ["appimage", "deb", "rpm"],
+      "output_appimage": "ArciTEK_AI-{version}-x86_64.AppImage",
+      "output_deb": "arcitek-ai_{version}_amd64.deb",
+      "output_rpm": "arcitek-ai-{version}.x86_64.rpm",
+      "shortcuts": {
+        "desktop_entry": true,
+        "application_menu": true
+      },
+      "dependencies": ["python3.11", "nodejs", "git"]
+    },
+    "debian": {
+      "enabled": true,
+      "package_name": "arcitek-ai",
+      "section": "devel",
+      "priority": "optional",
+      "maintainer": "infinite2025 <arcitek@infinite2025.com>",
+      "depends": ["python3 (>= 3.11)", "nodejs (>= 22)", "git"],
+      "recommends": ["docker.io", "nvidia-cuda-toolkit"],
+      "output": "arcitek-ai_{version}_amd64.deb"
+    },
+    "android": {
+      "enabled": true,
+      "min_sdk": 26,
+      "target_sdk": 34,
+      "package_name": "com.infinite2025.arcitek.ai",
+      "output": "ArciTEK_AI_v{version}.apk",
+      "permissions": [
+        "INTERNET",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE"
+      ],
+      "features": ["android.hardware.wifi"]
+    },
+    "ios": {
+      "enabled": true,
+      "min_version": "16.0",
+      "bundle_id": "com.infinite2025.arcitek.ai",
+      "team_id": "XXXXXXXXXX",
+      "output": "ArciTEK_AI_v{version}.ipa",
+      "capabilities": [
+        "com.apple.security.network.client",
+        "com.apple.security.files.user-selected.read-write"
+      ]
+    }
+  },
+  "automation": {
+    "auto_detect_system": true,
+    "auto_install_dependencies": true,
+    "auto_configure": true,
+    "auto_start_after_install": true,
+    "create_desktop_shortcut": true,
+    "add_to_path": true,
+    "register_file_associations": true,
+    "enable_auto_update": true
+  },
+  "ui": {
+    "theme": "professional",
+    "primary_color": "#1a1a2e",
+    "accent_color": "#4a9eff",
+    "logo": "shared/icons/arcitek_logo.png",
+    "banner": "shared/assets/installer_banner.png",
+    "wizard_steps": [
+      "welcome",
+      "license",
+      "components",
+      "install_path",
+      "configuration",
+      "install",
+      "finish"
+    ]
+  }
+}
