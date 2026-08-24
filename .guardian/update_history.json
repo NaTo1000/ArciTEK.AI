@@ -1,0 +1,12 @@
+{
+  "updated_at": "2026-08-24T11:46:24.903249+00:00",
+  "history": [
+    {
+      "checked_at": "2026-08-24T11:46:24.826679+00:00",
+      "current_version": "1.0.0",
+      "update_available": false,
+      "error": "GitHub API returned 403",
+      "applied": false
+    }
+  ]
+}
