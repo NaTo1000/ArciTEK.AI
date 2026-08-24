@@ -131,6 +131,28 @@ The upgrade system includes:
 - Rollback capability to previous versions
 - Post-upgrade task automation
 
+### Guardian — 24/7 Autonomous Bot
+
+Guardian is the platform's always-on **researcher, fixer/patcher, runtime
+monitor, emergency patcher, security system, and updater**:
+
+```bash
+# Run one full duty cycle
+python3 -m arcitek_core.guardian.main --once
+
+# Start the 24/7 daemon
+./startup.sh guardian
+
+# Print a JSON status report
+./startup.sh guardian-report
+```
+
+Guardian continuously scans the codebase for bugs and vulnerability patterns,
+applies safe revertible patches, watches CPU/memory/disk with emergency
+response, detects hardcoded secrets and dangerous function usage, and keeps
+the platform up to date. See [docs/GUARDIAN.md](docs/GUARDIAN.md) for the full
+guide.
+
 ### Deployment
 
 Deploy to various platforms:

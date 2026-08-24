@@ -326,16 +326,32 @@ main() {
             show_progress "Updating ArciTEK.AI"
             python3 scripts/upgrade.py
             ;;
+        guardian)
+            show_progress "Starting Guardian 24/7 bot"
+            echo -e "${CYAN}Guardian: researcher, fixer/patcher, runtime monitor,"
+            echo -e "emergency patcher, security system, and updater.${NC}"
+            python3 -m arcitek_core.guardian.main --daemon
+            ;;
+        guardian-once)
+            show_progress "Running a single Guardian duty cycle"
+            python3 -m arcitek_core.guardian.main --once
+            ;;
+        guardian-report)
+            python3 -m arcitek_core.guardian.main --report
+            ;;
         *)
-            echo "Usage: $0 {start|stop|restart|status|config|update}"
+            echo "Usage: $0 {start|stop|restart|status|config|update|guardian|guardian-once|guardian-report}"
             echo ""
             echo "Commands:"
-            echo "  start    - Start ArciTEK.AI (default)"
-            echo "  stop     - Stop ArciTEK.AI"
-            echo "  restart  - Restart ArciTEK.AI"
-            echo "  status   - Show service status"
-            echo "  config   - Run configuration wizard"
-            echo "  update   - Update to latest version"
+            echo "  start           - Start ArciTEK.AI (default)"
+            echo "  stop            - Stop ArciTEK.AI"
+            echo "  restart         - Restart ArciTEK.AI"
+            echo "  status          - Show service status"
+            echo "  config          - Run configuration wizard"
+            echo "  update          - Update to latest version"
+            echo "  guardian        - Start the Guardian 24/7 bot (daemon)"
+            echo "  guardian-once   - Run one Guardian duty cycle and exit"
+            echo "  guardian-report - Print Guardian status report (JSON)"
             exit 1
             ;;
     esac
