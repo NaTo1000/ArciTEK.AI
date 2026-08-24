@@ -60,6 +60,8 @@ def main(argv=None) -> int:
 
     if args.once:
         results = bot.run_once()
+        # Summaries only contain aggregate counts and metrics - never
+        # finding payloads - so nothing sensitive is printed here.
         print(json.dumps(results, indent=2, default=str))
         return 0
 
