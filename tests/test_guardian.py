@@ -202,6 +202,22 @@ class TestAutoFixer:
         finding = self._finding("scripts/buggy.py", 3, "hardcoded-secret")
         assert fixer.fix_findings([finding]) == []
 
+    def test_patch_record_keeps_original_line(self, config, workspace):
+        """Regression: patch history must store the pre-fix line."""
+        config.auto_fix_enabled = True
+        fixer = AutoFixer(config)
+        target = workspace / "scripts" / "buggy.py"
+        lines = target.read_text().splitlines()
+        lineno = next(i for i, l in enumerate(lines, 1) if l.strip() == "except:")
+
+        result = fixer.apply_fix(self._finding("scripts/buggy.py", lineno, "bare-except"))
+        assert result.success
+
+        record = next(p for p in fixer.get_patch_history() if p["patch_id"] == result.patch_id)
+        assert record["original_line"].strip() == "except:"
+        assert record["fixed_line"].strip() == "except Exception:"
+        assert record["original_line"] != record["fixed_line"]
+
 
 # ----------------------------------------------------------------------
 # Runtime Monitor
@@ -340,6 +356,11 @@ class TestUpdateManager:
         assert UpdateManager._is_newer("1.0.0", "1.0.0") is False
         assert UpdateManager._is_newer("0.9.9", "1.0.0") is False
 
+    def test_version_comparison_with_prerelease(self):
+        """Regression: pre-release suffixes must not crash comparison."""
+        assert UpdateManager._is_newer("1.1.0", "1.0.0-rc1") is True
+        assert UpdateManager._is_newer("1.0.0-rc1", "1.0.0") is False
+
     def test_check_handles_network_failure(self, config):
         updater = UpdateManager(config)
         with patch.dict(sys.modules, {"requests": None}):
@@ -413,3 +434,26 @@ class TestGuardianBot:
         bot = GuardianBot(config)
         bot.stop()
         assert bot._running is False
+
+    def test_alerting_incident_not_prematurely_resolved(self, config):
+        """Regression: an incident must stay open while its resource alerts."""
+        bot = GuardianBot(config)
+        hot = SystemSnapshot(cpu_percent=99.0, memory_percent=10.0, disk_percent=10.0)
+
+        # Trigger a CPU alert (threshold_samples = 2 in fixture config).
+        bot.monitor.check_thresholds(hot)
+        bot.monitor.check_thresholds(hot)
+        bot._duty_monitor = lambda: None  # not needed; call pieces directly
+
+        alert = {"severity": "critical", "resource": "cpu", "message": "CPU hot"}
+        incident = bot.emergency.respond(alert)
+        assert incident is not None
+
+        # CPU still above threshold but no new alert: excluded set protects it.
+        bot._resolve_calm_incidents(hot, exclude={"cpu"})
+        assert bot.emergency.open_incidents() != []
+
+        # CPU calmed down: incident resolves.
+        cool = SystemSnapshot(cpu_percent=10.0, memory_percent=10.0, disk_percent=10.0)
+        bot._resolve_calm_incidents(cool)
+        assert bot.emergency.open_incidents() == []

@@ -133,10 +133,9 @@ class UpdateManager:
     @staticmethod
     def _is_newer(latest: str, current: str) -> bool:
         def as_tuple(v: str):
-            try:
-                return tuple(int(part) for part in v.split(".") if part.isdigit() or part)
-            except ValueError:
-                return (0,)
+            # Only purely numeric segments count; pre-release/build suffixes
+            # (e.g. "1.0.0-rc1") are ignored rather than crashing.
+            return tuple(int(part) for part in v.split(".") if part.isdigit())
 
         return as_tuple(latest) > as_tuple(current)
 

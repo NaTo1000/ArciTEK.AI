@@ -112,8 +112,9 @@ class AutoFixer:
                 finding.id, finding.file_path, False, "line number out of range"
             )
 
-        fixed_line = self._fix_line(finding.pattern_id, lines[index])
-        if fixed_line is None or fixed_line == lines[index]:
+        original_line = lines[index]
+        fixed_line = self._fix_line(finding.pattern_id, original_line)
+        if fixed_line is None or fixed_line == original_line:
             return FixResult(
                 finding.id, finding.file_path, False, "no automatic fix available"
             )
@@ -144,7 +145,7 @@ class AutoFixer:
         patch_id = self._record_patch(
             finding=finding,
             backup_path=backup_path,
-            original_line=lines[index],
+            original_line=original_line,
             fixed_line=fixed_line,
         )
         logger.info("Patched %s:%d (%s)", finding.file_path, finding.line_number, finding.pattern_id)

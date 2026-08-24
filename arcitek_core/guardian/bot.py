@@ -140,15 +140,16 @@ class GuardianBot:
     def _duty_monitor(self) -> Dict:
         snapshot = self.monitor.collect_metrics()
         alerts = self.monitor.check_thresholds(snapshot)
+
+        alerting_resources = set()
         for alert in alerts:
             self._log_event("monitor-alert", alert)
             self.emergency.respond(alert)
+            alerting_resources.add(alert.get("resource"))
 
-            # If the system has calmed down, close matching open incidents.
-            for incident in self.emergency.open_incidents():
-                if incident.trigger.get("resource") == alert.get("resource"):
-                    continue
-            self._resolve_calm_incidents(snapshot)
+        # Close incidents whose resource has calmed down and is not
+        # currently alerting again.
+        self._resolve_calm_incidents(snapshot, exclude=alerting_resources)
 
         return snapshot.to_dict()
 
@@ -215,7 +216,7 @@ class GuardianBot:
             self._log_event("duty-error", {"duty": name, "error": str(exc)})
             return {"error": str(exc)}
 
-    def _resolve_calm_incidents(self, snapshot):
+    def _resolve_calm_incidents(self, snapshot, exclude=frozenset()):
         """Close open incidents whose resource is back under threshold."""
         thresholds = {
             "cpu": (snapshot.cpu_percent, self.config.cpu_threshold),
@@ -224,6 +225,8 @@ class GuardianBot:
         }
         for incident in self.emergency.open_incidents():
             resource = incident.trigger.get("resource")
+            if resource in exclude:
+                continue
             if resource in thresholds:
                 value, threshold = thresholds[resource]
                 if value < threshold:
