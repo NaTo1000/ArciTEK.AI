@@ -143,3 +143,6 @@ model_cache/
 arcitek_*.iso
 benchmark.json
 bandit-report.json
+
+# Guardian 24/7 bot runtime state
+.guardian/
